@@ -1,0 +1,406 @@
+/* index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  /* ─── Theme CSS Custom Properties ─── */
+  :root,
+  .dark {
+    --surface-50: 248 250 252;
+    --surface-100: 241 245 249;
+    --surface-200: 226 232 240;
+    --surface-700: 26 29 46;
+    --surface-800: 19 22 37;
+    --surface-850: 15 18 32;
+    --surface-900: 11 14 26;
+    --surface-950: 7 10 20;
+
+    --gray-300: 209 213 219;
+    --gray-400: 156 163 175;
+    --gray-500: 107 114 128;
+    --gray-600: 75 85 99;
+    --gray-700: 55 65 81;
+
+    --c-heading: 255 255 255;
+    --c-edge: 255 255 255;
+    --c-overlay: 255 255 255;
+
+    /* ─── Trading-grade design tokens ─── */
+    --bg-base: #0a0b0e;
+    --bg-surface: #111318;
+    --bg-elevated: #1a1d24;
+    --bg-overlay: #21252f;
+    --border-subtle: #1e2128;
+    --border-default: #2a2f3a;
+    --border-strong: #3d4454;
+    --brand-primary: #6366f1;
+    --brand-glow: rgba(99,102,241,0.15);
+    --bullish: #22c55e;
+    --bullish-dim: rgba(34,197,94,0.12);
+    --bearish: #ef4444;
+    --bearish-dim: rgba(239,68,68,0.12);
+    --neutral: #f59e0b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #475569;
+    --text-disabled: #334155;
+    --chart-up: #26a69a;
+    --chart-down: #ef5350;
+
+    color-scheme: dark;
+  }
+
+  .light {
+    --surface-50: 248 250 252;
+    --surface-100: 241 245 249;
+    --surface-200: 226 232 240;
+    --surface-700: 203 213 225;
+    --surface-800: 241 245 249;
+    --surface-850: 248 250 252;
+    --surface-900: 255 255 255;
+    --surface-950: 243 244 246;
+
+    --gray-300: 51 65 85;
+    --gray-400: 100 116 139;
+    --gray-500: 148 163 184;
+    --gray-600: 203 213 225;
+    --gray-700: 226 232 240;
+
+    --c-heading: 15 23 42;
+    --c-edge: 0 0 0;
+    --c-overlay: 0 0 0;
+
+    color-scheme: light;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typography hierarchy — strategic weight usage */
+  h1, h2, h3 { font-weight: 600; }
+  h4, h5, h6 { font-weight: 500; }
+  p, span, div, td, th { font-weight: 400; }
+  label { font-weight: 500; }
+  button { font-weight: 500; }
+
+  /* Custom scrollbar - dark */
+  .dark ::-webkit-scrollbar,
+  :root ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .dark ::-webkit-scrollbar-track,
+  :root ::-webkit-scrollbar-track {
+    background: rgba(15, 18, 32, 0.5);
+  }
+
+  .dark ::-webkit-scrollbar-thumb,
+  :root ::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.3);
+    border-radius: 3px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover,
+  :root ::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.5);
+  }
+
+  /* Custom scrollbar - light */
+  .light ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .light ::-webkit-scrollbar-track {
+    background: rgba(241, 245, 249, 0.8);
+  }
+
+  .light ::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.25);
+    border-radius: 3px;
+  }
+
+  .light ::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.45);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface-800/60 backdrop-blur-xl border border-edge/5 rounded-xl;
+  }
+
+  .glass-card-hover {
+    @apply glass-card hover:border-primary-500/20 hover:bg-surface-800/80 transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-500 text-white font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 shadow-lg shadow-primary-600/20 hover:shadow-primary-500/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-700 hover:bg-surface-700/80 text-heading font-medium px-5 py-2.5 rounded-lg border border-edge/10 hover:border-edge/20 transition-all duration-200 active:scale-[0.98];
+  }
+
+  .btn-buy {
+    @apply bg-buy hover:bg-green-400 text-white font-bold px-6 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-green-500/20 active:scale-[0.98];
+  }
+
+  .btn-sell {
+    @apply bg-sell hover:bg-red-400 text-white font-bold px-6 py-3 rounded-lg transition-all duration-200 shadow-lg shadow-red-500/20 active:scale-[0.98];
+  }
+
+  .input-field {
+    @apply w-full bg-surface-900/80 border border-edge/10 rounded-lg px-4 py-3 text-heading placeholder-gray-500 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/20 transition-all duration-200;
+  }
+
+  .label-text {
+    @apply text-sm font-medium text-gray-400 mb-1.5 block;
+  }
+
+  .price-up {
+    @apply text-profit;
+  }
+
+  .price-down {
+    @apply text-loss;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-heading hover:bg-overlay/5 transition-all duration-200 font-medium text-sm;
+  }
+
+  .sidebar-link-active {
+    @apply sidebar-link text-heading bg-primary-600/20 border-l-2 border-primary-500;
+  }
+
+  .stat-card {
+    @apply glass-card p-5 flex flex-col gap-1;
+  }
+
+  /* ─── Trading-grade typography ─── */
+  .price-display {
+    font-family: 'DM Mono', 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+  }
+
+  /* ─── Signal Pills ─── */
+  .signal-pill {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide inline-flex items-center gap-1;
+  }
+  .signal-pill.bullish {
+    background: var(--bullish-dim);
+    color: var(--bullish);
+    border: 1px solid rgba(34,197,94,0.2);
+  }
+  .signal-pill.bearish {
+    background: var(--bearish-dim);
+    color: var(--bearish);
+    border: 1px solid rgba(239,68,68,0.2);
+  }
+  .signal-pill.neutral {
+    background: rgba(245,158,11,0.12);
+    color: var(--neutral);
+    border: 1px solid rgba(245,158,11,0.2);
+  }
+
+  /* ─── KPI Card ─── */
+  .kpi-card {
+    @apply rounded-xl border border-edge/5 bg-surface-900/60 p-4 flex flex-col gap-1 transition-colors;
+  }
+  .kpi-card:hover {
+    @apply border-edge/10 bg-surface-800/60;
+  }
+  .kpi-card-highlight {
+    @apply kpi-card col-span-2 relative overflow-hidden;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-400 via-accent-cyan to-accent-emerald bg-clip-text text-transparent;
+  }
+
+  .animate-in {
+    @apply animate-fade-in;
+  }
+
+  /* ─── Trading terminal responsive grid ─── */
+  .terminal-grid {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "watchlist header  orders"
+      "watchlist chart   orders"
+      "watchlist bottom  orders";
+    gap: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  @media (max-width: 1023px) {
+    .terminal-grid {
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        "header  orders"
+        "chart   orders"
+        "bottom  orders";
+    }
+  }
+
+  @media (max-width: 767px) {
+    .terminal-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr auto auto;
+      grid-template-areas:
+        "header"
+        "chart"
+        "bottom"
+        "tradebar";
+    }
+  }
+
+  .terminal-area-watchlist {
+    grid-area: watchlist;
+  }
+
+  .terminal-area-header {
+    grid-area: header;
+  }
+
+  .terminal-area-chart {
+    grid-area: chart;
+  }
+
+  .terminal-area-orders {
+    grid-area: orders;
+  }
+
+  .terminal-area-bottom {
+    grid-area: bottom;
+  }
+
+  .terminal-area-tradebar {
+    grid-area: tradebar;
+  }
+
+  /* ─── Resize handle ─── */
+  .resize-handle {
+    @apply relative flex-shrink-0 z-10;
+    background: transparent;
+    transition: background-color 150ms ease;
+  }
+
+  .resize-handle:hover,
+  .resize-handle.active {
+    background: rgba(99, 102, 241, 0.3);
+  }
+
+  .resize-handle--horizontal {
+    width: 4px;
+    cursor: col-resize;
+  }
+
+  .resize-handle--vertical {
+    height: 4px;
+    cursor: row-resize;
+  }
+
+  /* ─── Scrollbar-none utility ─── */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ─── No-drag on text (for resize panels) ─── */
+  .select-none-on-drag {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ─── Ticker marquee (infinite horizontal scroll) ─── */
+  .ticker-marquee {
+    display: flex;
+    width: max-content;
+    animation: ticker-scroll 80s linear infinite;
+  }
+
+  .ticker-marquee:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes ticker-scroll {
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes bell-ring {
+    0% {
+      transform: rotate(0deg);
+    }
+
+    15% {
+      transform: rotate(14deg);
+    }
+
+    30% {
+      transform: rotate(-12deg);
+    }
+
+    45% {
+      transform: rotate(10deg);
+    }
+
+    60% {
+      transform: rotate(-8deg);
+    }
+
+    75% {
+      transform: rotate(4deg);
+    }
+
+    100% {
+      transform: rotate(0deg);
+    }
+  }
+}

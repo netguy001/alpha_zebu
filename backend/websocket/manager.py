@@ -1,0 +1,220 @@
+import asyncio
+import json
+import logging
+from typing import Dict, Set, Optional
+from fastapi import WebSocket
+from services import market_data
+
+logger = logging.getLogger(__name__)
+
+
+class ConnectionManager:
+    """Manages WebSocket connections, subscriptions, and event routing."""
+
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}  # connection_id -> websocket
+        self.subscriptions: Dict[str, Set[str]] = {}  # symbol -> set of connection_ids
+        self.user_connections: Dict[str, Set[str]] = (
+            {}
+        )  # user_id -> set of connection_ids
+        self.connection_users: Dict[str, str] = {}  # connection_id -> user_id
+
+    async def connect(
+        self, websocket: WebSocket, connection_id: str, user_id: Optional[str] = None
+    ):
+        await websocket.accept()
+        self.active_connections[connection_id] = websocket
+        if user_id:
+            self.connection_users[connection_id] = user_id
+            self.user_connections.setdefault(user_id, set()).add(connection_id)
+        logger.info(
+            f"WebSocket connected: {connection_id}"
+            + (f" (user: {user_id[:8]}...)" if user_id else "")
+        )
+
+    def disconnect(self, connection_id: str):
+        self.active_connections.pop(connection_id, None)
+        # Remove user mapping
+        user_id = self.connection_users.pop(connection_id, None)
+        if user_id and user_id in self.user_connections:
+            self.user_connections[user_id].discard(connection_id)
+            if not self.user_connections[user_id]:
+                del self.user_connections[user_id]
+        # Remove from all subscriptions
+        for symbol in list(self.subscriptions.keys()):
+            self.subscriptions[symbol].discard(connection_id)
+            if not self.subscriptions[symbol]:
+                del self.subscriptions[symbol]
+        logger.info(f"WebSocket disconnected: {connection_id}")
+
+    def subscribe(self, connection_id: str, symbols: list[str]):
+        for symbol in symbols:
+            formatted = market_data._format_symbol(symbol)
+            if formatted not in self.subscriptions:
+                self.subscriptions[formatted] = set()
+            self.subscriptions[formatted].add(connection_id)
+
+    def unsubscribe(self, connection_id: str, symbols: list[str]):
+        for symbol in symbols:
+            formatted = market_data._format_symbol(symbol)
+            if formatted in self.subscriptions:
+                self.subscriptions[formatted].discard(connection_id)
+
+    async def send_personal(self, connection_id: str, data: dict):
+        ws = self.active_connections.get(connection_id)
+        if ws:
+            try:
+                await ws.send_json(data)
+            except Exception:
+                self.disconnect(connection_id)
+
+    async def send_to_user(self, user_id: str, data: dict):
+        """Send a message to all WebSocket connections for a specific user."""
+        conn_ids = self.user_connections.get(user_id, set())
+        dead = []
+        for conn_id in conn_ids:
+            ws = self.active_connections.get(conn_id)
+            if ws:
+                try:
+                    await ws.send_json(data)
+                except Exception:
+                    dead.append(conn_id)
+        for d in dead:
+            self.disconnect(d)
+
+    async def broadcast_price(self, symbol: str, price_data: dict):
+        """Broadcast price update to all subscribers of a symbol."""
+        subscribers = self.subscriptions.get(symbol, set())
+        dead = []
+        # Send as "quote" type with symbol at top level for frontend compat
+        msg = {
+            "type": "quote",
+            "channel": "prices",
+            "symbol": symbol,
+            **price_data,
+        }
+        for conn_id in subscribers:
+            ws = self.active_connections.get(conn_id)
+            if ws:
+                try:
+                    await ws.send_json(msg)
+                except Exception:
+                    dead.append(conn_id)
+        for d in dead:
+            self.disconnect(d)
+
+    async def broadcast_all(self, data: dict):
+        """Broadcast a message to ALL connected clients."""
+        dead = []
+        for conn_id, ws in self.active_connections.items():
+            try:
+                await ws.send_json(data)
+            except Exception:
+                dead.append(conn_id)
+        for d in dead:
+            self.disconnect(d)
+
+    # ── Event Bus Handlers ──────────────────────────────────────────
+    # These methods are subscribed to EventBus events in main.py lifespan
+
+    async def on_price_event(self, event):
+        """Handle PRICE_UPDATED events from Market Data Worker."""
+        symbol = event.data.get("symbol")
+        quote = event.data.get("quote")
+        if symbol and quote:
+            await self.broadcast_price(symbol, quote)
+
+    async def on_order_event(self, event):
+        """Handle ORDER_* events — send to the specific user."""
+        user_id = event.user_id
+        if user_id:
+            await self.send_to_user(
+                user_id,
+                {
+                    "type": event.type.value,
+                    "channel": "orders",
+                    "data": event.data,
+                },
+            )
+
+    async def on_portfolio_event(self, event):
+        """Handle PORTFOLIO_UPDATED events — send to the specific user."""
+        user_id = event.user_id
+        if user_id:
+            await self.send_to_user(
+                user_id,
+                {
+                    "type": "portfolio_update",
+                    "channel": "portfolio",
+                    "data": event.data,
+                },
+            )
+
+    async def on_algo_event(self, event):
+        """Handle ALGO_TRADE / ALGO_SIGNAL events.
+        ZeroLoss channel → broadcast to ALL clients (system-wide strategy).
+        Other algo events → send to specific user only.
+        """
+        channel = (event.data or {}).get("channel", "algo")
+
+        if channel == "zeroloss":
+            await self.broadcast_all(
+                {
+                    "type": event.type.value,
+                    "channel": "zeroloss",
+                    "data": event.data,
+                }
+            )
+        else:
+            user_id = event.user_id
+            if user_id:
+                await self.send_to_user(
+                    user_id,
+                    {
+                        "type": event.type.value,
+                        "channel": "algo",
+                        "data": event.data,
+                    },
+                )
+
+    # ── Message Handling ───────────────────────────────────────────
+
+    async def handle_message(self, connection_id: str, message: str):
+        """Handle incoming WebSocket messages."""
+        try:
+            data = json.loads(message)
+            # Support both 'action' and 'type' fields for backward compat
+            action = data.get("action") or data.get("type")
+
+            if action == "subscribe":
+                symbols = data.get("symbols", [])
+                self.subscribe(connection_id, symbols)
+                await self.send_personal(
+                    connection_id,
+                    {
+                        "type": "subscribed",
+                        "symbols": symbols,
+                    },
+                )
+            elif action == "unsubscribe":
+                symbols = data.get("symbols", [])
+                self.unsubscribe(connection_id, symbols)
+                await self.send_personal(
+                    connection_id,
+                    {
+                        "type": "unsubscribed",
+                        "symbols": symbols,
+                    },
+                )
+            elif action == "ping":
+                await self.send_personal(
+                    connection_id,
+                    {
+                        "type": "pong",
+                    },
+                )
+        except json.JSONDecodeError:
+            pass
+
+
+manager = ConnectionManager()

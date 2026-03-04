@@ -1,0 +1,558 @@
+// LoginPage.jsx
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../stores/useAuthStore";
+import {
+  HiOutlineMail,
+  HiOutlineLockClosed,
+  HiOutlineEye,
+  HiOutlineEyeOff,
+  HiArrowRight,
+  HiShieldCheck,
+} from "react-icons/hi";
+import toast from "react-hot-toast";
+
+/* ─── Animated Trading Visualization ─────────────────────────── */
+function TradingAnimation() {
+  const candles = [
+    { x: 28, o: 158, c: 132, h: 120, l: 172, up: true },
+    { x: 58, o: 132, c: 150, h: 118, l: 163, up: false },
+    { x: 88, o: 150, c: 124, h: 108, l: 164, up: true },
+    { x: 118, o: 124, c: 142, h: 105, l: 155, up: false },
+    { x: 148, o: 142, c: 112, h: 98, l: 155, up: true },
+    { x: 178, o: 112, c: 135, h: 88, l: 148, up: false },
+    { x: 208, o: 135, c: 106, h: 82, l: 148, up: true },
+    { x: 238, o: 106, c: 125, h: 76, l: 138, up: false },
+    { x: 268, o: 125, c: 94, h: 68, l: 135, up: true },
+    { x: 298, o: 94, c: 115, h: 60, l: 128, up: false },
+    { x: 328, o: 115, c: 80, h: 55, l: 125, up: true },
+    { x: 358, o: 80, c: 102, h: 48, l: 118, up: false },
+  ];
+
+  const midPoints = candles.map((c) => ({ x: c.x, y: (c.o + c.c) / 2 }));
+  const linePath = midPoints
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
+  const areaPath =
+    linePath +
+    ` L ${midPoints[midPoints.length - 1].x} 230 L ${midPoints[0].x} 230 Z`;
+
+  return (
+    <div className="relative w-full h-full flex flex-col overflow-hidden select-none">
+      {/* Ambient glow blobs */}
+      <div
+        className="absolute -top-24 -left-24 w-80 h-80 rounded-full bg-indigo-600/12 blur-3xl"
+        style={{ animation: "pulse 4s ease-in-out infinite" }}
+      />
+      <div
+        className="absolute bottom-16 -right-10 w-64 h-64 rounded-full bg-cyan-500/8 blur-3xl"
+        style={{ animation: "pulse 6s ease-in-out infinite" }}
+      />
+      <div
+        className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full bg-violet-600/8 blur-3xl"
+        style={{ animation: "pulse 5s ease-in-out infinite" }}
+      />
+
+      {/* Logo */}
+      <div className="relative z-10 px-9 pt-9 flex-shrink-0">
+        <Link to="/">
+          <img
+            src="/logo.png"
+            alt="AlphaSync"
+            className="h-11 object-contain dark:brightness-100 brightness-0"
+          />
+        </Link>
+      </div>
+
+      {/* Main chart card */}
+      <div className="relative z-10 flex-1 flex flex-col justify-center px-7 py-4">
+        <div
+          className="rounded-2xl overflow-hidden border border-white/8 shadow-2xl shadow-black/60"
+          style={{
+            background: "rgba(10,11,22,0.85)",
+            backdropFilter: "blur(20px)",
+          }}
+        >
+          {/* Chart topbar */}
+          <div
+            className="flex items-center justify-between px-5 py-3 border-b border-white/5"
+            style={{ background: "rgba(0,0,0,0.3)" }}
+          >
+            <div className="flex gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+            </div>
+            <span className="text-[11px] font-mono text-gray-500 tracking-widest">
+              NIFTY 50 · 1D
+            </span>
+            <span className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+              LIVE
+            </span>
+          </div>
+
+          {/* Price + timeframes */}
+          <div className="flex items-end justify-between px-5 pt-4 pb-1">
+            <div>
+              <div className="text-[22px] font-black text-white font-mono tracking-tight">
+                25,487.05
+              </div>
+              <div className="text-xs text-emerald-400 font-mono font-bold mt-0.5">
+                ▲ 142.30 &nbsp;+0.56%
+              </div>
+            </div>
+            <div className="flex gap-1 mb-1">
+              {["1D", "1W", "1M", "3M"].map((p) => (
+                <span
+                  key={p}
+                  className={`text-[10px] px-2 py-0.5 rounded-md font-bold cursor-pointer transition-colors ${p === "1D" ? "bg-indigo-500/25 text-indigo-300" : "text-gray-600 hover:text-gray-400"}`}
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* SVG Candlestick Chart */}
+          <div className="px-2 pb-1">
+            <svg
+              viewBox="0 0 386 240"
+              className="w-full h-32"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="lg-area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366f1" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="lg-line" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#818cf8" />
+                  <stop offset="100%" stopColor="#22d3ee" />
+                </linearGradient>
+                <filter
+                  id="line-glow"
+                  x="-10%"
+                  y="-50%"
+                  width="120%"
+                  height="200%"
+                >
+                  <feGaussianBlur stdDeviation="2.5" result="b" />
+                  <feMerge>
+                    <feMergeNode in="b" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              {/* Horizontal grid */}
+              {[55, 95, 135, 175, 215].map((y) => (
+                <line
+                  key={y}
+                  x1="15"
+                  y1={y}
+                  x2="375"
+                  y2={y}
+                  stroke="rgba(255,255,255,0.035)"
+                  strokeWidth="1"
+                />
+              ))}
+              {/* Candles */}
+              {candles.map((c, i) => (
+                <g
+                  key={i}
+                  style={{
+                    animation: `fadeInUp 0.4s ease-out ${i * 0.06}s both`,
+                  }}
+                >
+                  <line
+                    x1={c.x}
+                    y1={c.h}
+                    x2={c.x}
+                    y2={c.l}
+                    stroke={c.up ? "#22c55e" : "#ef4444"}
+                    strokeWidth="1.5"
+                    opacity="0.65"
+                  />
+                  <rect
+                    x={c.x - 7}
+                    y={Math.min(c.o, c.c)}
+                    width="14"
+                    height={Math.max(2, Math.abs(c.o - c.c))}
+                    fill={c.up ? "#22c55e" : "#ef4444"}
+                    opacity="0.88"
+                    rx="2"
+                  />
+                </g>
+              ))}
+              {/* Area */}
+              <path d={areaPath} fill="url(#lg-area)" />
+              {/* Trend line */}
+              <path
+                d={linePath}
+                fill="none"
+                stroke="url(#lg-line)"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                filter="url(#line-glow)"
+                style={{
+                  strokeDasharray: 1200,
+                  strokeDashoffset: 1200,
+                  animation: "drawLine 2.5s ease-out 0.3s forwards",
+                }}
+              />
+              {/* Live pulse dot */}
+              <circle cx="358" cy="102" r="3.5" fill="#22d3ee">
+                <animate
+                  attributeName="r"
+                  values="3.5;7;3.5"
+                  dur="1.8s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="1;0.2;1"
+                  dur="1.8s"
+                  repeatCount="indefinite"
+                />
+              </circle>
+            </svg>
+          </div>
+
+          {/* Mini stock row */}
+          <div className="grid grid-cols-4 border-t border-white/5">
+            {[
+              { s: "RELIANCE", p: "1,420", c: "-0.52%", up: false },
+              { s: "TCS", p: "3,598", c: "+2.44%", up: true },
+              { s: "HDFC", p: "1,920", c: "+0.83%", up: true },
+              { s: "INFY", p: "1,281", c: "-1.85%", up: false },
+            ].map(({ s, p, c, up }, i) => (
+              <div
+                key={s}
+                className={`px-3 py-2.5 text-center ${i < 3 ? "border-r border-white/5" : ""}`}
+              >
+                <div className="text-[9px] text-gray-600 font-bold uppercase tracking-wider">
+                  {s}
+                </div>
+                <div className="text-[11px] font-mono text-gray-300 mt-0.5">
+                  {p}
+                </div>
+                <div
+                  className={`text-[10px] font-mono font-bold mt-0.5 ${up ? "text-emerald-400" : "text-red-400"}`}
+                >
+                  {c}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Stat pills below chart */}
+        <div className="flex gap-2 mt-3 justify-center flex-wrap">
+          {[
+            {
+              v: "500+",
+              l: "Active Traders",
+              col: "border-indigo-500/20 bg-indigo-500/8 text-indigo-300",
+            },
+            {
+              v: "₹50 Cr+",
+              l: "Simulated",
+              col: "border-emerald-500/20 bg-emerald-500/8 text-emerald-400",
+            },
+            {
+              v: "200+",
+              l: "NSE Stocks",
+              col: "border-cyan-500/20 bg-cyan-500/8 text-cyan-400",
+            },
+          ].map(({ v, l, col }) => (
+            <div
+              key={l}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-semibold ${col}`}
+            >
+              <span className="font-black">{v}</span>
+              <span className="opacity-70">{l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom brand text */}
+      <div className="relative z-10 px-9 pb-9 flex-shrink-0">
+        <h2 className="text-[22px] font-black text-white leading-tight tracking-tight">
+          Trade smarter.
+          <br />
+          <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+            Risk nothing.
+          </span>
+        </h2>
+        <p className="text-[12px] text-gray-600 mt-1.5 leading-relaxed">
+          Practice with real NSE &amp; BSE data. ₹10,00,000 virtual capital.
+        </p>
+      </div>
+
+      <style>{`
+                @keyframes drawLine { to { stroke-dashoffset: 0; } }
+                @keyframes fadeInUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+            `}</style>
+    </div>
+  );
+}
+
+/* ─── Main Page ────────────────────────────────────────────────── */
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [needs2FA, setNeeds2FA] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const login = useAuthStore((s) => s.login);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const result = await login(email, password, needs2FA ? totpCode : null);
+      if (result.requires2FA) {
+        setNeeds2FA(true);
+        toast("Enter your 2FA code to continue", { icon: "🔒" });
+      } else if (result.success) {
+        toast.success("Welcome back!");
+        navigate("/select-mode");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fieldCls =
+    "w-full py-3 rounded-xl text-sm text-white placeholder-gray-600 border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/25 focus:border-indigo-500/50 focus:bg-white/[0.06]";
+  const fieldBg = "bg-white/[0.04] border-white/8";
+
+  return (
+    <div
+      className="h-screen w-screen overflow-hidden flex"
+      style={{ background: "#07080f" }}
+    >
+      {/* LEFT — animated chart panel */}
+      <div
+        className="hidden lg:flex w-[52%] h-full border-r border-white/5 flex-col"
+        style={{
+          background:
+            "linear-gradient(135deg, #0a0c1a 0%, #0d0f20 50%, #08090f 100%)",
+        }}
+      >
+        <TradingAnimation />
+      </div>
+
+      {/* RIGHT — premium form */}
+      <div
+        className="flex-1 h-full flex items-center justify-center px-8 xl:px-12 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(145deg, #0b0d1c 0%, #07080f 100%)",
+        }}
+      >
+        {/* Decorative glow */}
+        <div
+          className="absolute -top-10 -right-10 w-96 h-96 rounded-full pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="absolute -bottom-10 -left-10 w-72 h-72 rounded-full pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(34,211,238,0.04) 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Decorative corner lines */}
+        <div className="absolute top-0 right-0 w-32 h-32 border-r border-t border-indigo-500/8 rounded-bl-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 border-l border-b border-cyan-500/6 rounded-tr-3xl pointer-events-none" />
+
+        {/* Mobile logo */}
+        <div className="lg:hidden absolute top-7 left-1/2 -translate-x-1/2">
+          <Link to="/">
+            <img
+              src="/logo.png"
+              alt="AlphaSync"
+              className="h-10 object-contain"
+            />
+          </Link>
+        </div>
+
+        <div className="w-full max-w-[360px] relative z-10">
+          {/* Live pill */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/8 mb-6">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+            </span>
+            <span className="text-[11px] font-semibold text-indigo-300 tracking-wide">
+              Live NSE &amp; BSE Markets
+            </span>
+          </div>
+
+          {/* Headline */}
+          <div className="mb-7">
+            <h1 className="text-[28px] font-black text-white tracking-tight leading-tight mb-2">
+              Welcome back
+            </h1>
+            <p className="text-[13px] text-gray-500 leading-relaxed">
+              Sign in to continue trading with your virtual portfolio.
+            </p>
+          </div>
+
+          {/* Glass form card */}
+          <div className="relative">
+            {/* Gradient border */}
+            <div
+              className="absolute -inset-[1px] rounded-2xl pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(255,255,255,0.04) 50%, rgba(34,211,238,0.12) 100%)",
+              }}
+            />
+            <div
+              className="relative rounded-2xl p-6 shadow-2xl"
+              style={{
+                background: "rgba(14,16,30,0.95)",
+                backdropFilter: "blur(24px)",
+              }}
+            >
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Email */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-500 mb-2 uppercase tracking-widest">
+                    Email Address
+                  </label>
+                  <div className="relative group">
+                    <HiOutlineMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-gray-600 group-focus-within:text-indigo-400 transition-colors duration-200" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                      className={`${fieldCls} ${fieldBg} pl-10 pr-4`}
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                      Password
+                    </label>
+                    <button
+                      type="button"
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
+                    >
+                      Forgot?
+                    </button>
+                  </div>
+                  <div className="relative group">
+                    <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[15px] h-[15px] text-gray-600 group-focus-within:text-indigo-400 transition-colors duration-200" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      required
+                      className={`${fieldCls} ${fieldBg} pl-10 pr-11`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition-colors"
+                    >
+                      {showPassword ? (
+                        <HiOutlineEyeOff className="w-4 h-4" />
+                      ) : (
+                        <HiOutlineEye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2FA */}
+                {needs2FA && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-2 uppercase tracking-widest">
+                      2FA Code 🔒
+                    </label>
+                    <input
+                      type="text"
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(e.target.value)}
+                      placeholder="000 000"
+                      maxLength={6}
+                      className={`${fieldCls} ${fieldBg} px-4 text-center text-xl tracking-[0.6em] font-mono border-indigo-500/30`}
+                    />
+                  </div>
+                )}
+
+                {/* CTA */}
+                <div className="pt-1">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="relative w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-[13px] font-black text-white overflow-hidden transition-all duration-200 active:scale-[0.98] disabled:opacity-50 group"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #6366f1 0%, #4f46e5 60%, #4338ca 100%)",
+                      boxShadow: "0 4px 24px rgba(99,102,241,0.35)",
+                    }}
+                  >
+                    {/* Shimmer */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/12 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        {needs2FA ? "Verify & Sign In" : "Sign In"}
+                        <HiArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-150" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Links */}
+          <div className="mt-5 text-center space-y-2.5">
+            <p className="text-[13px] text-gray-500">
+              Don&apos;t have an account?{" "}
+              <Link
+                to="/register"
+                className="text-indigo-400 hover:text-indigo-300 font-bold transition-colors"
+              >
+                Create free account
+              </Link>
+            </p>
+            <div className="flex items-center justify-center gap-1.5">
+              <HiShieldCheck className="w-3.5 h-3.5 text-emerald-500/60" />
+              <span className="text-[11px] text-gray-700">
+                All data is simulated. No real money involved.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

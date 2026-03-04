@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://alphasync:alphasync@db:5432/alphasync
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-alphasync-production-secret}
+      - ZEROLOSS_CONFIDENCE_THRESHOLD=${ZEROLOSS_CONFIDENCE_THRESHOLD:-75}
+      - ZEROLOSS_SYMBOLS=${ZEROLOSS_SYMBOLS:-RELIANCE,TCS,HDFCBANK,INFY,ICICIBANK}
+      - MARKET_PROVIDER=${MARKET_PROVIDER:-yahoo}
+      - REDIS_URL=redis://redis:6379/0
+      - ZEBU_WS_URL=${ZEBU_WS_URL:-wss://ws1.zebull.in/NorenWS/}
+      - ZEBU_USER_ID=${ZEBU_USER_ID:-}
+      - ZEBU_API_KEY=${ZEBU_API_KEY:-}
+      - ZEBU_SESSION_TOKEN=${ZEBU_SESSION_TOKEN:-}
+      - ZEBU_VENDOR_CODE=${ZEBU_VENDOR_CODE:-}
+      - ZEBU_REDIRECT_URI=${ZEBU_REDIRECT_URI:-http://localhost:5173/broker/callback}
+      - ZEBU_API_URL=${ZEBU_API_URL:-https://api.zebull.in/rest/V3norenapi}
+      - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY:-alphasync-broker-encryption-default-change-in-production-!!}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alphasync
+      POSTGRES_USER: alphasync
+      POSTGRES_PASSWORD: alphasync
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
