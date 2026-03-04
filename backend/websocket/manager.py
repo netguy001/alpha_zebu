@@ -118,11 +118,24 @@ class ConnectionManager:
     # These methods are subscribed to EventBus events in main.py lifespan
 
     async def on_price_event(self, event):
-        """Handle PRICE_UPDATED events from Market Data Worker."""
+        """Handle PRICE_UPDATED events from Market Data Worker.
+
+        Broadcasts to ALL connected clients (not just subscribers) because
+        the MarketDataWorker only polls popular stocks and indices, making
+        full broadcast safe and ensuring all clients receive live data
+        without needing explicit subscription management.
+        """
         symbol = event.data.get("symbol")
         quote = event.data.get("quote")
         if symbol and quote:
-            await self.broadcast_price(symbol, quote)
+            # Broadcast to ALL clients so prices flow without subscription gaps
+            msg = {
+                "type": "quote",
+                "channel": "prices",
+                "symbol": symbol,
+                **quote,
+            }
+            await self.broadcast_all(msg)
 
     async def on_order_event(self, event):
         """Handle ORDER_* events — send to the specific user."""

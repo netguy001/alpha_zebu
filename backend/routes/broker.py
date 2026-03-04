@@ -49,6 +49,10 @@ class DirectLoginRequest(BaseModel):
     zebu_user_id: str
     password: str
     factor2: Optional[str] = ""  # DOB (DD-MM-YYYY) or TOTP depending on account
+    api_key: Optional[str] = (
+        ""  # API Key from MYNT portal (required if not configured server-side)
+    )
+    vendor_code: Optional[str] = ""  # Vendor code (defaults to user ID)
 
 
 # ── Routes ──────────────────────────────────────────────────────────
@@ -143,6 +147,8 @@ async def broker_direct_login(
             zebu_uid=body.zebu_user_id,
             password=body.password,
             totp=body.factor2 or "",
+            api_key=body.api_key or "",
+            vendor_code=body.vendor_code or "",
         )
         if result.get("success"):
             await db.commit()

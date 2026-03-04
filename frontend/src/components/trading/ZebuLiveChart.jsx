@@ -319,6 +319,7 @@ class CanvasChartRenderer {
     // ── Data setters ───────────────────────────────────────────────
 
     setCandles(c) { this.candles = c; this.render(); }
+    resetScroll() { this.scrollOffset = 0; }
     setOverlays(o) { this.overlays = o; this.render(); }
     setHLines(l) { this.hLines = l; this.render(); }
     setLivePrice(p) { this.livePriceValue = p; this.render(); }
@@ -739,6 +740,7 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     useEffect(() => {
         if (!rendererRef.current || candles.length === 0) return;
         candlesRef.current = candles.map(c => ({ ...c }));
+        rendererRef.current.resetScroll();
         rendererRef.current.setCandles(candlesRef.current);
     }, [candles]);
 

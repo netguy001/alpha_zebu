@@ -478,6 +478,8 @@ class BrokerAuthService:
         zebu_uid: str,
         password: str,
         totp: str = "",
+        api_key: str = "",
+        vendor_code: str = "",
     ) -> dict:
         """
         Authenticate directly via Zebu's QuickAuth API.
@@ -492,12 +494,12 @@ class BrokerAuthService:
         import hashlib
 
         # Build appkey: SHA-256 of "uid|api_secret"
-        # api_secret is the App Key from MYNT portal (server config)
-        _api_secret = settings.ZEBU_API_SECRET or settings.ZEBU_API_KEY
+        # api_secret priority: user-provided api_key > server ZEBU_API_SECRET > ZEBU_API_KEY
+        _api_secret = api_key or settings.ZEBU_API_SECRET or settings.ZEBU_API_KEY
         if not _api_secret:
             raise ValueError(
-                "ZEBU_API_SECRET not configured on server. "
-                "Set it in backend/.env (App Key from MYNT portal)."
+                "API Key is required. Get it from MYNT portal → "
+                "Client Code → API Key."
             )
         appkey_raw = f"{zebu_uid}|{_api_secret}"
         appkey = hashlib.sha256(appkey_raw.encode()).hexdigest()
@@ -510,7 +512,7 @@ class BrokerAuthService:
             "uid": zebu_uid,
             "pwd": pwd_hash,
             "factor2": totp,
-            "vc": settings.ZEBU_VENDOR_CODE or zebu_uid,
+            "vc": vendor_code or settings.ZEBU_VENDOR_CODE or zebu_uid,
             "appkey": appkey,
             "imei": "alphasync",
             "source": "API",

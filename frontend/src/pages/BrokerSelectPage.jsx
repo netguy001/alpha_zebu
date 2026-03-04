@@ -178,6 +178,8 @@ function ZebuLoginModal({ open, onClose, onSuccess }) {
   const [uid, setUid] = useState("");
   const [password, setPassword] = useState("");
   const [factor2, setFactor2] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [vendorCode, setVendorCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const brokerLogin = useBrokerStore((s) => s.login);
   const loading = useBrokerStore((s) => s.loading);
@@ -190,8 +192,12 @@ function ZebuLoginModal({ open, onClose, onSuccess }) {
       toast.error("User ID and Password are required");
       return;
     }
+    if (!apiKey.trim()) {
+      toast.error("API Key is required (from MYNT portal)");
+      return;
+    }
     try {
-      await brokerLogin(uid.trim(), password, factor2.trim());
+      await brokerLogin(uid.trim(), password, factor2.trim(), apiKey.trim(), vendorCode.trim());
       toast.success("Zebu connected successfully!");
       onSuccess?.();
     } catch (err) {
@@ -322,10 +328,48 @@ function ZebuLoginModal({ open, onClose, onSuccess }) {
             </div>
           </div>
 
+          {/* API Key */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+              API Key{" "}
+              <span className="text-gray-600 font-normal">(from MYNT portal)</span>
+            </label>
+            <div className="relative">
+              <HiOutlineKey className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Your API Key from MYNT portal"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white text-sm placeholder-gray-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          {/* Vendor Code */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-400 mb-1.5">
+              Vendor Code{" "}
+              <span className="text-gray-600 font-normal">(optional, defaults to User ID)</span>
+            </label>
+            <div className="relative">
+              <HiOutlineUser className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="text"
+                value={vendorCode}
+                onChange={(e) => setVendorCode(e.target.value)}
+                placeholder={uid || "Same as User ID"}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white text-sm placeholder-gray-600 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
           {/* Submit */}
           <button
             type="submit"
-            disabled={loading || !uid.trim() || !password.trim()}
+            disabled={loading || !uid.trim() || !password.trim() || !apiKey.trim()}
             className={`
               w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2.5 transition-all duration-300
               ${loading || !uid.trim() || !password.trim()

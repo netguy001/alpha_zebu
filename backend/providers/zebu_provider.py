@@ -387,6 +387,10 @@ class ZebuProvider(MarketProvider):
                 "sp1": "2513.50",  # best sell price
                 "ft": "1709123456",# feed timestamp
             }
+
+        NOTE: "tf" (update) ticks often omit fields that haven't changed
+        (e.g., "c" prev_close is only in the initial "tk" ack). We must
+        merge with the previous tick to preserve values like prev_close.
         """
         token = data.get("tk", "")
         canonical = zebu_token_to_canonical(token)
@@ -403,24 +407,42 @@ class ZebuProvider(MarketProvider):
         if lp is None or lp <= 0:
             return  # No valid price
 
-        prev_close = self._safe_float(data.get("c", 0))
+        # For "tf" updates, Zebu often omits unchanged fields.
+        # Merge with previous cache entry to preserve prev_close, open, etc.
+        prev_cache = self._price_cache.get(canonical, {})
+
+        # prev_close: use current tick's "c" if present, else fall back to cached value
+        prev_close_raw = data.get("c")
+        if prev_close_raw is not None:
+            prev_close = self._safe_float(prev_close_raw) or 0
+        else:
+            prev_close = prev_cache.get("prev_close", 0)
+
         change = (lp - prev_close) if prev_close else 0
         change_pct = (change / prev_close * 100) if prev_close else 0
 
+        # Same merge logic for OHLV fields — use tick value if present, else cached
+        tick_open = self._safe_float(data.get("o"))
+        tick_high = self._safe_float(data.get("h"))
+        tick_low = self._safe_float(data.get("l"))
+        tick_vol = self._safe_float(data.get("v"))
+
         quote = {
             "symbol": canonical,
-            "name": data.get("ts", canonical).replace("-EQ", ""),
+            "name": data.get("ts", prev_cache.get("name", canonical)).replace(
+                "-EQ", ""
+            ),
             "price": lp,
             "change": round(change, 2),
             "change_percent": round(change_pct, 2),
-            "open": self._safe_float(data.get("o", 0)),
-            "high": self._safe_float(data.get("h", 0)),
-            "low": self._safe_float(data.get("l", 0)),
+            "open": tick_open if tick_open else prev_cache.get("open", 0),
+            "high": tick_high if tick_high else prev_cache.get("high", 0),
+            "low": tick_low if tick_low else prev_cache.get("low", 0),
             "close": prev_close,
             "prev_close": prev_close,
-            "volume": int(self._safe_float(data.get("v", 0)) or 0),
+            "volume": int(tick_vol or 0) if tick_vol else prev_cache.get("volume", 0),
             "market_cap": 0,
-            "exchange": data.get("e", "NSE"),
+            "exchange": data.get("e", prev_cache.get("exchange", "NSE")),
             "timestamp": datetime.utcnow().isoformat(),
         }
 

@@ -99,14 +99,18 @@ export const useBrokerStore = create((set, get) => ({
      * @param {string} zebuUserId - Zebu account User ID
      * @param {string} password   - Zebu password (sent to backend, hashed server-side)
      * @param {string} totp       - TOTP / 2FA code (optional)
+     * @param {string} apiKey     - API Key from MYNT portal (required)
+     * @param {string} vendorCode - Vendor code (optional, defaults to user ID)
      */
-    login: async (zebuUserId, password, factor2 = '') => {
+    login: async (zebuUserId, password, factor2 = '', apiKey = '', vendorCode = '') => {
         set({ loading: true, error: null });
         try {
             const res = await api.post('/broker/zebu/login', {
                 zebu_user_id: zebuUserId,
                 password,
                 factor2,
+                api_key: apiKey,
+                vendor_code: vendorCode || undefined,
             });
             set({
                 status: 'connected',

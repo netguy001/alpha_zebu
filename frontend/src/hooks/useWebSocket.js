@@ -92,11 +92,14 @@ export function useWebSocket() {
                 const data = JSON.parse(event.data);
                 // Handle real-time quote updates from Zebu
                 if (data.type === 'quote' && data.symbol) {
-                    updateQuote(data.symbol, data);
+                    // Strip WS envelope fields to avoid polluting the quote object in the store
+                    const { type, channel, ...quoteData } = data;
+                    updateQuote(data.symbol, quoteData);
                 }
                 // Backward compat: also handle "price_update" type (legacy format)
                 if (data.type === 'price_update' && data.data?.symbol) {
-                    updateQuote(data.data.symbol, data.data);
+                    const { type: _t, channel: _c, ...legacyData } = data.data;
+                    updateQuote(data.data.symbol, legacyData);
                 }
                 // Route zeroloss channel messages to the zeroloss store
                 if (data.channel === 'zeroloss') {
