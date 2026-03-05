@@ -47,16 +47,16 @@ services:
       - uploads:/app/uploads
     environment:
       - DEBUG=false
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-alphasync}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-alphasync}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-alphasync}:${POSTGRES_PASSWORD:-alphasync}@db:5432/${POSTGRES_DB:-alphasync}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-alphasync-default-jwt-secret-change-in-production}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-alphasync_redis_default}@redis:6379/0
       - CORS_ORIGINS=["https://www.alphasync.app","https://alphasync.app"]
       - ZEBU_WS_URL=${ZEBU_WS_URL:-wss://go.mynt.in/NorenWSTP/}
       - ZEBU_API_URL=${ZEBU_API_URL:-https://go.mynt.in/NorenWClientTP}
       - ZEBU_API_SECRET=${ZEBU_API_SECRET:-}
       - ZEBU_VENDOR_CODE=${ZEBU_VENDOR_CODE:-}
       - ZEBU_REDIRECT_URI=https://www.alphasync.app/broker/callback
-      - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY}
+      - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY:-alphasync-default-broker-key-change-in-production-1234}
       - SIMULATION_MODE=${SIMULATION_MODE:-false}
     depends_on:
       db:
@@ -88,7 +88,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-alphasync}
       POSTGRES_USER: ${POSTGRES_USER:-alphasync}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alphasync}
     volumes:
       - pgdata:/var/lib/postgresql/data
     # Do NOT expose port externally in production
@@ -110,15 +110,11 @@ services:
       - "6379"
     volumes:
       - redisdata:/data
-    command: >
-      redis-server
-        --appendonly yes
-        --maxmemory 256mb
-        --maxmemory-policy allkeys-lru
-        --requirepass ${REDIS_PASSWORD:-}
+    command: >-
+      redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-alphasync_redis_default}
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-}", "ping" ]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-alphasync_redis_default}", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5

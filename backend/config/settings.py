@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     DB_POOL_PRE_PING: bool = True
 
     # JWT
-    JWT_SECRET_KEY: str = ""
+    JWT_SECRET_KEY: str = "alphasync-default-jwt-secret-change-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -52,7 +52,9 @@ class Settings(BaseSettings):
 
     # Broker Token Encryption (AES-256-GCM)
     # Generate with: python -c "import secrets; print(secrets.token_urlsafe(48))"
-    BROKER_ENCRYPTION_KEY: str = ""
+    BROKER_ENCRYPTION_KEY: str = (
+        "alphasync-default-broker-key-change-in-production-1234"
+    )
 
     # 2FA
     TWO_FACTOR_ISSUER: str = "AlphaSync"
