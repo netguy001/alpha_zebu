@@ -299,6 +299,7 @@ class CanvasChartRenderer {
     }
 
     resize(w, h) {
+        if (w <= 0 || h <= 0) return; // prevent degenerate canvas
         this.canvas.width = Math.round(w * this.dpr);
         this.canvas.height = Math.round(h * this.dpr);
         this.canvas.style.width = w + 'px';
@@ -310,8 +311,10 @@ class CanvasChartRenderer {
     _recalcLayout() {
         this._w = this.canvas.width / this.dpr;
         this._h = this.canvas.height / this.dpr;
-        this._chartRight = this._w - PRICE_SCALE_W;
-        this._chartBottom = this._h - TIME_SCALE_H;
+        // On narrow viewports, reduce the price scale width to keep charts usable
+        const priceW = this._w < 200 ? 48 : PRICE_SCALE_W;
+        this._chartRight = Math.max(0, this._w - priceW);
+        this._chartBottom = Math.max(this._chartTop, this._h - TIME_SCALE_H);
         this._chartW = this._chartRight;
         this._chartH = this._chartBottom - this._chartTop;
     }
@@ -341,7 +344,10 @@ class CanvasChartRenderer {
         ctx.scale(dpr, dpr);
         ctx.clearRect(0, 0, this._w, this._h);
 
-        if (this.candles.length === 0) { ctx.restore(); return; }
+        // Skip drawing if no data or canvas has no usable area
+        if (this.candles.length === 0 || this._chartW <= 0 || this._chartH <= 0) {
+            ctx.restore(); return;
+        }
 
         const totalSlotW = this.candleWidth * (1 + this.gapRatio);
         const visibleCount = Math.max(1, Math.floor(this._chartW / totalSlotW));
@@ -485,7 +491,7 @@ class CanvasChartRenderer {
                 ctx.font = 'bold 11px Inter, system-ui, sans-serif';
                 const tw = ctx.measureText(lbl).width + 10;
                 ctx.fillStyle = LIVE_LINE_COLOR;
-                ctx.fillRect(this._chartRight, ly - 9, Math.max(tw, PRICE_SCALE_W), 18);
+                ctx.fillRect(this._chartRight, ly - 9, Math.max(tw, this._w - this._chartRight), 18);
                 ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
                 ctx.fillText(lbl, this._chartRight + 5, ly);
             }
@@ -511,8 +517,9 @@ class CanvasChartRenderer {
             ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
             ctx.fillText(plabel, this._chartRight + 5, my);
 
-            // Time label at cursor
-            const nearIdx = Math.round(this.mouseX / totalSlotW) + startIdx;
+            // Time label at cursor (account for half-slot offset in idxToX)
+            const nearIdx = Math.max(startIdx, Math.min(actualEnd,
+                Math.round((this.mouseX - totalSlotW / 2) / totalSlotW) + startIdx));
             if (nearIdx >= 0 && nearIdx < this.candles.length) {
                 const tl = fmtTimeLabel(this.candles[nearIdx].time, isIntraday);
                 ctx.font = '10px Inter, system-ui, sans-serif';
@@ -672,6 +679,8 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     const rendererRef = useRef(null);
     const roRef = useRef(null);
     const candlesRef = useRef([]);
+    const candlesPropRef = useRef(candles); // always-current candles for use in init effect
+    candlesPropRef.current = candles;
 
     const liveQuote = useMarketStore((s) => s.symbols[symbol] ?? null);
 
@@ -681,6 +690,9 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     const [activeTool, setActiveTool] = useState(null);
     const [hLines, setHLines] = useState([]);
     const [livePrice, setLivePrice] = useState(null);
+
+    // Bumped when the renderer is (re)created — forces candles effect to re-run
+    const [rendererVersion, setRendererVersion] = useState(0);
 
     const menuRef = useRef(null);
     useEffect(() => {
@@ -697,21 +709,45 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     // ── Initialize Canvas renderer (once) ─────────────────────────────────────
     useEffect(() => {
         if (!containerRef.current) return;
+        const container = containerRef.current;
         const canvas = document.createElement('canvas');
         canvas.style.display = 'block';
         canvas.style.width = '100%';
         canvas.style.height = '100%';
-        containerRef.current.appendChild(canvas);
+        container.appendChild(canvas);
 
         const renderer = new CanvasChartRenderer(canvas, { isDark: theme === 'dark' });
         renderer.attach();
         renderer.setPeriod(period);
         renderer.onHLineAdded((price) => setHLines(prev => [...prev, { price, color: '#6366F1' }]));
 
-        const rect = containerRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) renderer.resize(rect.width, rect.height);
+        // Initial size from container
+        const rect = container.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            renderer.resize(rect.width, rect.height);
+        }
 
         rendererRef.current = renderer;
+
+        // Feed candles immediately if already available (handles React 18
+        // StrictMode re-mounts and fast initial loads where candles arrive
+        // before or during mount)
+        const latestCandles = candlesPropRef.current;
+        if (latestCandles.length > 0) {
+            candlesRef.current = latestCandles.map(c => ({ ...c }));
+            renderer.resetScroll();
+            renderer.setCandles(candlesRef.current);
+        }
+
+        // Fallback resize — some browsers delay initial ResizeObserver callback,
+        // and CSS grid / flexbox may not have computed final layout yet at mount.
+        // Try again on the next animation frame to catch deferred layouts.
+        const fallbackRaf = requestAnimationFrame(() => {
+            const r = container.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+                renderer.resize(r.width, r.height);
+            }
+        });
 
         const ro = new ResizeObserver(entries => {
             for (const entry of entries) {
@@ -719,10 +755,14 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
                 if (width > 0 && height > 0) renderer.resize(width, height);
             }
         });
-        ro.observe(containerRef.current);
+        ro.observe(container);
         roRef.current = ro;
 
+        // Signal that the renderer was created so candles effect re-runs
+        setRendererVersion(v => v + 1);
+
         return () => {
+            cancelAnimationFrame(fallbackRaf);
             ro.disconnect();
             renderer.detach();
             if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
@@ -737,12 +777,13 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     useEffect(() => { if (rendererRef.current) rendererRef.current.setPeriod(period); }, [period]);
 
     // ── Feed historical candles ───────────────────────────────────────────────
+    // Also re-runs when rendererVersion changes (i.e. renderer was recreated)
     useEffect(() => {
         if (!rendererRef.current || candles.length === 0) return;
         candlesRef.current = candles.map(c => ({ ...c }));
         rendererRef.current.resetScroll();
         rendererRef.current.setCandles(candlesRef.current);
-    }, [candles]);
+    }, [candles, rendererVersion]);
 
     // ── Live candle updates ───────────────────────────────────────────────────
     useEffect(() => {
@@ -755,16 +796,20 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
         const last = candlesRef.current[candlesRef.current.length - 1];
 
         if (last && last.time === bucketTime) {
+            // Keep historical interval volume — liveQuote.volume is cumulative
+            // daily volume from WebSocket ticks, NOT per-candle interval volume.
+            // Using it here would dwarf all other volume bars.
             candlesRef.current[candlesRef.current.length - 1] = {
                 time: bucketTime,
                 open: last.open,
                 high: Math.max(last.high, price),
                 low: Math.min(last.low, price),
                 close: price,
-                volume: liveQuote.volume || last.volume || 0,
+                volume: last.volume || 0,
             };
         } else if (!last || bucketTime > last.time) {
-            candlesRef.current.push({ time: bucketTime, open: price, high: price, low: price, close: price, volume: liveQuote.volume || 0 });
+            // New candle — no interval volume available from WebSocket
+            candlesRef.current.push({ time: bucketTime, open: price, high: price, low: price, close: price, volume: 0 });
         }
 
         rendererRef.current.setCandles(candlesRef.current);
@@ -912,7 +957,8 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     prev.period === next.period &&
     prev.symbol === next.symbol &&
     prev.trendData?.overall === next.trendData?.overall &&
-    prev.trendData?.confidence === next.trendData?.confidence
+    prev.trendData?.confidence === next.trendData?.confidence &&
+    prev.zeroLossTrend === next.zeroLossTrend
 );
 
 export default ZebuLiveChart;

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -14,13 +12,13 @@ services:
       - ZEROLOSS_SYMBOLS=${ZEROLOSS_SYMBOLS:-RELIANCE,TCS,HDFCBANK,INFY,ICICIBANK}
       - MARKET_PROVIDER=${MARKET_PROVIDER:-yahoo}
       - REDIS_URL=redis://redis:6379/0
-      - ZEBU_WS_URL=${ZEBU_WS_URL:-wss://ws1.zebull.in/NorenWS/}
+      - ZEBU_WS_URL=${ZEBU_WS_URL:-wss://go.mynt.in/NorenWSTP/}
       - ZEBU_USER_ID=${ZEBU_USER_ID:-}
       - ZEBU_API_KEY=${ZEBU_API_KEY:-}
       - ZEBU_SESSION_TOKEN=${ZEBU_SESSION_TOKEN:-}
       - ZEBU_VENDOR_CODE=${ZEBU_VENDOR_CODE:-}
       - ZEBU_REDIRECT_URI=${ZEBU_REDIRECT_URI:-http://localhost:5173/broker/callback}
-      - ZEBU_API_URL=${ZEBU_API_URL:-https://api.zebull.in/rest/V3norenapi}
+      - ZEBU_API_URL=${ZEBU_API_URL:-https://go.mynt.in/NorenWClientTP}
       - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY:-alphasync-broker-encryption-default-change-in-production-!!}
     depends_on:
       - db

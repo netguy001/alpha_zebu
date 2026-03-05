@@ -23,7 +23,7 @@ Usage:
 
 import asyncio
 import logging
-from datetime import datetime, time, date
+from datetime import datetime, time, date, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -255,7 +255,7 @@ class ZeroLossController:
                         "support_resistance": confidence.sr_score,
                     },
                     "reasons": confidence.reasons,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
 
                 # Broadcast confidence update via WebSocket

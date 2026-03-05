@@ -29,7 +29,7 @@ class ConnectionManager:
             self.user_connections.setdefault(user_id, set()).add(connection_id)
         logger.info(
             f"WebSocket connected: {connection_id}"
-            + (f" (user: {user_id[:8]}...)" if user_id else "")
+            + (f" (user: {str(user_id)[:8]}...)" if user_id else "")
         )
 
     def disconnect(self, connection_id: str):

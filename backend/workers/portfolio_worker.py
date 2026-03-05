@@ -83,7 +83,7 @@ class PortfolioRecalcWorker:
 
         logger.info(
             f"Portfolio recalc triggered: {side} {quantity}x {symbol} "
-            f"@ ₹{filled_price:.2f} for user {user_id[:8]}..."
+            f"@ ₹{filled_price:.2f} for user {str(user_id)[:8]}..."
         )
 
         async with async_session_factory() as db:

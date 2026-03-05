@@ -1,28 +1,84 @@
 import uuid
-from datetime import datetime
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey
+from datetime import datetime, timezone
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    Numeric,
+    DateTime,
+    ForeignKey,
+    Index,
+    CheckConstraint,
+    text,
+)
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from database.connection import Base
+
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 class Order(Base):
     __tablename__ = "orders"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    symbol = Column(String(20), nullable=False)
-    exchange = Column(String(10), default="NSE")
-    order_type = Column(String(20), nullable=False)  # MARKET, LIMIT, STOP_LOSS, STOP_LOSS_LIMIT
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    symbol = Column(String(30), nullable=False, index=True)
+    exchange = Column(
+        String(10), default="NSE", nullable=False, server_default=text("'NSE'")
+    )
+    order_type = Column(
+        String(20), nullable=False
+    )  # MARKET, LIMIT, STOP_LOSS, STOP_LOSS_LIMIT
     side = Column(String(4), nullable=False)  # BUY, SELL
     quantity = Column(Integer, nullable=False)
-    price = Column(Float, nullable=True)  # For limit orders
-    trigger_price = Column(Float, nullable=True)  # For stop-loss
-    filled_quantity = Column(Integer, default=0)
-    filled_price = Column(Float, nullable=True)
-    status = Column(String(20), default="PENDING")  # PENDING, OPEN, FILLED, PARTIALLY_FILLED, CANCELLED, REJECTED
+    price = Column(Numeric(precision=14, scale=2), nullable=True)  # For limit orders
+    trigger_price = Column(
+        Numeric(precision=14, scale=2), nullable=True
+    )  # For stop-loss
+    filled_quantity = Column(
+        Integer, default=0, nullable=False, server_default=text("0")
+    )
+    filled_price = Column(Numeric(precision=14, scale=2), nullable=True)
+    status = Column(
+        String(20), default="PENDING", nullable=False, server_default=text("'PENDING'")
+    )
     rejection_reason = Column(String(500), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    executed_at = Column(DateTime, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=_utcnow,
+        nullable=False,
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=_utcnow,
+        onupdate=_utcnow,
+        nullable=False,
+        server_default=text("now()"),
+    )
+    executed_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("User", back_populates="orders")
+
+    __table_args__ = (
+        CheckConstraint("side IN ('BUY', 'SELL')", name="ck_order_side"),
+        CheckConstraint(
+            "order_type IN ('MARKET', 'LIMIT', 'STOP_LOSS', 'STOP_LOSS_LIMIT')",
+            name="ck_order_type",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING', 'OPEN', 'FILLED', 'PARTIALLY_FILLED', 'CANCELLED', 'REJECTED', 'EXPIRED')",
+            name="ck_order_status",
+        ),
+        CheckConstraint("quantity > 0", name="ck_order_qty_positive"),
+        Index("ix_orders_user_status", "user_id", "status"),
+        Index("ix_orders_user_created", "user_id", "created_at"),
+    )

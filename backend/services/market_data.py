@@ -100,7 +100,8 @@ class BrokerNotConnected(Exception):
     def __init__(self, user_id: str = ""):
         self.user_id = user_id
         super().__init__(
-            f"Broker not connected" + (f" for user {user_id[:8]}..." if user_id else "")
+            f"Broker not connected"
+            + (f" for user {str(user_id)[:8]}..." if user_id else "")
         )
 
 
@@ -140,7 +141,7 @@ async def get_quote_safe(symbol: str, user_id: str) -> Optional[dict]:
         return await get_quote(symbol, user_id)
     except (BrokerNotConnected, ProviderDataUnavailable, RuntimeError) as e:
         logger.debug(
-            f"get_quote_safe({symbol}, {user_id[:8] if user_id else '?'}): {e}"
+            f"get_quote_safe({symbol}, {str(user_id)[:8] if user_id else '?'}): {e}"
         )
         return None
     except Exception as e:

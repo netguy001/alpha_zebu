@@ -27,7 +27,7 @@ import asyncio
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -177,8 +177,8 @@ class ZebuProvider(MarketProvider):
 
             logger.info(
                 f"ZebuProvider credentials updated: "
-                f"{old_user[:8] if old_user else 'none'}... → "
-                f"{user_id[:8] if user_id else 'none'}..."
+                f"{str(old_user)[:8] if old_user else 'none'}... → "
+                f"{str(user_id)[:8] if user_id else 'none'}..."
             )
 
             if not session_token:
@@ -262,7 +262,7 @@ class ZebuProvider(MarketProvider):
             self._consecutive_failures = 0
             logger.info(
                 f"ZebuProvider connected and authenticated | "
-                f"user={self._user_id[:8] if self._user_id else '?'}... | "
+                f"user={str(self._user_id)[:8] if self._user_id else '?'}... | "
                 f"pending_resubscribe={len(self._subscribed_symbols)}"
             )
 
@@ -443,7 +443,7 @@ class ZebuProvider(MarketProvider):
             "volume": int(tick_vol or 0) if tick_vol else prev_cache.get("volume", 0),
             "market_cap": 0,
             "exchange": data.get("e", prev_cache.get("exchange", "NSE")),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Update in-memory cache
@@ -678,7 +678,7 @@ class ZebuProvider(MarketProvider):
             "volume": int(self._safe_float(data.get("v", 0)) or 0),
             "market_cap": 0,
             "exchange": mapping["exchange"],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Update local cache so future get_quote() calls return this
@@ -916,13 +916,22 @@ class ZebuProvider(MarketProvider):
                 continue
 
             # Parse OHLCV — Zebu uses into/inth/intl/intc/intv for intraday
-            o = self._safe_float(c.get("into") or c.get("o"))
-            h = self._safe_float(c.get("inth") or c.get("h"))
-            l = self._safe_float(c.get("intl") or c.get("l"))
-            cl = self._safe_float(c.get("intc") or c.get("c"))
-            v = int(
-                self._safe_float(c.get("intv") or c.get("v") or c.get("oi", 0)) or 0
-            )
+            # NOTE: Use explicit key checks — Python's `or` chain treats 0, "",
+            # and 0.0 as falsy, which incorrectly skips valid zero values and
+            # falls through to cumulative fields (e.g. intv=0 → uses cum. vol v).
+            o = self._safe_float(c["into"] if "into" in c else c.get("o"))
+            h = self._safe_float(c["inth"] if "inth" in c else c.get("h"))
+            l = self._safe_float(c["intl"] if "intl" in c else c.get("l"))
+            cl = self._safe_float(c["intc"] if "intc" in c else c.get("c"))
+
+            # Volume: prefer intv (interval volume) for intraday, then v (daily),
+            # then oi (open interest) as last resort.
+            if "intv" in c:
+                v = int(self._safe_float(c["intv"]) or 0)
+            elif "v" in c:
+                v = int(self._safe_float(c["v"]) or 0)
+            else:
+                v = int(self._safe_float(c.get("oi", 0)) or 0)
 
             if o is None or h is None or l is None or cl is None:
                 continue

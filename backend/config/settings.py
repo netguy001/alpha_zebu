@@ -6,13 +6,19 @@ import os
 class Settings(BaseSettings):
     APP_NAME: str = "AlphaSync"
     APP_VERSION: str = "2.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
-    # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./alphasync.db"
+    # Database (PostgreSQL — required for production)
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://alphasync:alphasync@localhost:5432/alphasync"
+    )
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_RECYCLE: int = 3600
+    DB_POOL_PRE_PING: bool = True
 
     # JWT
-    JWT_SECRET_KEY: str = "alphasync-super-secret-key-change-in-production-2024"
+    JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -46,9 +52,7 @@ class Settings(BaseSettings):
 
     # Broker Token Encryption (AES-256-GCM)
     # Generate with: python -c "import secrets; print(secrets.token_urlsafe(48))"
-    BROKER_ENCRYPTION_KEY: str = (
-        "alphasync-broker-encryption-default-change-in-production-!!"
-    )
+    BROKER_ENCRYPTION_KEY: str = ""
 
     # 2FA
     TWO_FACTOR_ISSUER: str = "AlphaSync"
@@ -68,7 +72,7 @@ class Settings(BaseSettings):
     RISK_MAX_OPEN_ORDERS: int = 20
 
     # Market Session
-    SIMULATION_MODE: bool = True  # Allow trading outside market hours
+    SIMULATION_MODE: bool = False  # Allow trading outside market hours
 
     class Config:
         env_file = ".env"

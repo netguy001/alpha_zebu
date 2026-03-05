@@ -181,7 +181,7 @@ async def broker_manual_token(
     login (e.g. Zebu desktop app, curl, etc.) and want to inject it
     directly without going through OAuth redirect.
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from sqlalchemy import select, and_
     from models.broker import BrokerAccount
     from services.broker_crypto import encrypt_token, encrypt_json
@@ -203,8 +203,8 @@ async def broker_manual_token(
         account.broker_user_id = body.broker_user_id or account.broker_user_id
         account.extra_data_enc = encrypt_json(extra)
         account.is_active = True
-        account.token_expiry = datetime.utcnow() + timedelta(hours=8)
-        account.last_used_at = datetime.utcnow()
+        account.token_expiry = datetime.now(timezone.utc) + timedelta(hours=8)
+        account.last_used_at = datetime.now(timezone.utc)
     else:
         account = BrokerAccount(
             user_id=user.id,
@@ -213,9 +213,9 @@ async def broker_manual_token(
             access_token_enc=encrypt_token(body.session_token),
             extra_data_enc=encrypt_json(extra),
             is_active=True,
-            token_expiry=datetime.utcnow() + timedelta(hours=8),
-            connected_at=datetime.utcnow(),
-            last_used_at=datetime.utcnow(),
+            token_expiry=datetime.now(timezone.utc) + timedelta(hours=8),
+            connected_at=datetime.now(timezone.utc),
+            last_used_at=datetime.now(timezone.utc),
         )
         db.add(account)
 

@@ -17,7 +17,7 @@ Usage:
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from strategies.zeroloss.confidence_engine import ConfidenceBreakdown
@@ -111,7 +111,7 @@ class ZeroLossSignalGenerator:
         Returns:
             ZeroLossSignal with all trade levels populated (or NO_TRADE).
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Build indicator snapshot for the signal record
         indicator_snapshot = {

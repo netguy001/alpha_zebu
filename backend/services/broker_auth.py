@@ -42,7 +42,7 @@ IMPORTANT:
 import json
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -94,7 +94,7 @@ class BrokerAuthService:
         state = secrets.token_urlsafe(32)
         self._pending_states[state] = {
             "user_id": user_id,
-            "created": datetime.utcnow(),
+            "created": datetime.now(timezone.utc),
         }
 
         # Zebu uses a vendor-key + redirect-based login.
@@ -141,7 +141,7 @@ class BrokerAuthService:
             raise ValueError("Invalid or expired OAuth state token")
 
         # States older than 10 minutes are rejected
-        if (datetime.utcnow() - pending["created"]).total_seconds() > 600:
+        if (datetime.now(timezone.utc) - pending["created"]).total_seconds() > 600:
             raise ValueError("OAuth state token expired (>10 min)")
 
         user_id = pending["user_id"]
@@ -192,8 +192,8 @@ class BrokerAuthService:
             account.broker_user_id = broker_user_id
             account.extra_data_enc = encrypt_json(extra)
             account.is_active = True
-            account.token_expiry = datetime.utcnow() + timedelta(hours=8)
-            account.last_used_at = datetime.utcnow()
+            account.token_expiry = datetime.now(timezone.utc) + timedelta(hours=8)
+            account.last_used_at = datetime.now(timezone.utc)
         else:
             account = BrokerAccount(
                 user_id=user_id,
@@ -202,16 +202,16 @@ class BrokerAuthService:
                 access_token_enc=access_token_enc,
                 extra_data_enc=encrypt_json(extra),
                 is_active=True,
-                token_expiry=datetime.utcnow() + timedelta(hours=8),
-                connected_at=datetime.utcnow(),
-                last_used_at=datetime.utcnow(),
+                token_expiry=datetime.now(timezone.utc) + timedelta(hours=8),
+                connected_at=datetime.now(timezone.utc),
+                last_used_at=datetime.now(timezone.utc),
             )
             db.add(account)
 
         await db.flush()
 
         logger.info(
-            f"Broker connected: user={user_id[:8]} broker={broker} "
+            f"Broker connected: user={str(user_id)[:8]} broker={broker} "
             f"broker_user={broker_user_id}"
         )
 
@@ -254,9 +254,9 @@ class BrokerAuthService:
             return None
 
         # Check token expiry
-        if account.token_expiry and account.token_expiry < datetime.utcnow():
+        if account.token_expiry and account.token_expiry < datetime.now(timezone.utc):
             logger.warning(
-                f"Broker token expired for user={user_id[:8]} broker={broker}"
+                f"Broker token expired for user={str(user_id)[:8]} broker={broker}"
             )
             # Try refresh if we have a refresh token
             refreshed = await self._try_refresh(db, account)
@@ -271,13 +271,13 @@ class BrokerAuthService:
                 decrypt_json(account.extra_data_enc) if account.extra_data_enc else {}
             )
         except Exception as e:
-            logger.error(f"Token decryption failed for user={user_id[:8]}: {e}")
+            logger.error(f"Token decryption failed for user={str(user_id)[:8]}: {e}")
             account.is_active = False
             await db.flush()
             return None
 
         # Update last used
-        account.last_used_at = datetime.utcnow()
+        account.last_used_at = datetime.now(timezone.utc)
         await db.flush()
 
         return {
@@ -350,7 +350,7 @@ class BrokerAuthService:
         account.is_active = False
         await db.flush()
 
-        logger.info(f"Broker disconnected: user={user_id[:8]} broker={broker}")
+        logger.info(f"Broker disconnected: user={str(user_id)[:8]} broker={broker}")
         return True
 
     # ────────────────────────────────────────────────────────────────
@@ -375,7 +375,7 @@ class BrokerAuthService:
 
         is_expired = (
             account.token_expiry is not None
-            and account.token_expiry < datetime.utcnow()
+            and account.token_expiry < datetime.now(timezone.utc)
         )
 
         return {
@@ -614,8 +614,8 @@ class BrokerAuthService:
             account.broker_user_id = broker_user_id
             account.extra_data_enc = encrypt_json(extra)
             account.is_active = True
-            account.token_expiry = datetime.utcnow() + timedelta(hours=8)
-            account.last_used_at = datetime.utcnow()
+            account.token_expiry = datetime.now(timezone.utc) + timedelta(hours=8)
+            account.last_used_at = datetime.now(timezone.utc)
         else:
             account = BrokerAccount(
                 user_id=user_id,
@@ -624,16 +624,16 @@ class BrokerAuthService:
                 access_token_enc=access_token_enc,
                 extra_data_enc=encrypt_json(extra),
                 is_active=True,
-                token_expiry=datetime.utcnow() + timedelta(hours=8),
-                connected_at=datetime.utcnow(),
-                last_used_at=datetime.utcnow(),
+                token_expiry=datetime.now(timezone.utc) + timedelta(hours=8),
+                connected_at=datetime.now(timezone.utc),
+                last_used_at=datetime.now(timezone.utc),
             )
             db.add(account)
 
         await db.flush()
 
         logger.info(
-            f"Zebu direct login successful: user={user_id[:8]} "
+            f"Zebu direct login successful: user={str(user_id)[:8]} "
             f"broker_user={broker_user_id}"
         )
 

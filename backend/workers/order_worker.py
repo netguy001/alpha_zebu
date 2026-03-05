@@ -11,7 +11,7 @@ trading_engine.py exists but is never called.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -80,14 +80,16 @@ class OrderExecutionWorker:
                     return
 
                 logger.debug(f"Evaluating {len(open_orders)} open orders")
-                expiry_cutoff = datetime.utcnow() - timedelta(days=ORDER_EXPIRY_DAYS)
+                expiry_cutoff = datetime.now(timezone.utc) - timedelta(
+                    days=ORDER_EXPIRY_DAYS
+                )
 
                 for order in open_orders:
                     try:
                         # ── Expire stale orders ─────────────────────────
                         if order.created_at and order.created_at < expiry_cutoff:
                             order.status = "EXPIRED"
-                            order.updated_at = datetime.utcnow()
+                            order.updated_at = datetime.now(timezone.utc)
                             self._stats["expired"] += 1
                             logger.info(
                                 f"Order EXPIRED: {order.id} | {order.side} {order.quantity}x "
@@ -122,7 +124,11 @@ class OrderExecutionWorker:
                                         "symbol": order.symbol,
                                         "side": order.side,
                                         "quantity": order.quantity,
-                                        "filled_price": order.filled_price,
+                                        "filled_price": (
+                                            float(order.filled_price)
+                                            if order.filled_price
+                                            else None
+                                        ),
                                     },
                                     user_id=str(order.user_id),
                                     source="order_execution_worker",
@@ -167,7 +173,7 @@ class OrderExecutionWorker:
             order.status = "FILLED"
             order.filled_quantity = order.quantity
             order.filled_price = current_price
-            order.executed_at = datetime.utcnow()
+            order.executed_at = datetime.now(timezone.utc)
 
             # Portfolio update will be handled by the Portfolio Worker
             # via the ORDER_FILLED event

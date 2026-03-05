@@ -1,0 +1,31 @@
+# ── Dependencies ─────────────────────────────────────────────
+node_modules/
+__pycache__/
+*.pyc
+
+# ── Environment / Secrets ────────────────────────────────────
+.env
+.env.local
+.env.production
+deploy/.env.production
+
+# ── Build outputs ────────────────────────────────────────────
+frontend/dist/
+backend/*.db
+
+# ── IDE ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Docker volumes ───────────────────────────────────────────
+pgdata/
+redisdata/
+
+# ── Uploads ──────────────────────────────────────────────────
+backend/uploads/avatars/*
+!backend/uploads/avatars/.gitkeep

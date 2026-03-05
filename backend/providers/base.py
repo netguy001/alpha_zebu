@@ -16,7 +16,7 @@ That is handled by the MarketDataWorker which consumes the provider.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -55,7 +55,9 @@ class Quote:
     week_52_high: float = 0.0
     week_52_low: float = 0.0
     exchange: str = "NSE"
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
     def to_dict(self) -> dict:
         """Serialize to dict (compatible with existing quote format)."""

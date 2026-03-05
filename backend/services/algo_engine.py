@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -21,7 +21,7 @@ async def get_strategies(db: AsyncSession, user_id: str) -> list:
     strategies = result.scalars().all()
     return [
         {
-            "id": s.id,
+            "id": str(s.id),
             "name": s.name,
             "description": s.description,
             "strategy_type": s.strategy_type,
@@ -29,11 +29,11 @@ async def get_strategies(db: AsyncSession, user_id: str) -> list:
             "is_active": s.is_active,
             "parameters": s.parameters,
             "max_position_size": s.max_position_size,
-            "stop_loss_percent": s.stop_loss_percent,
-            "take_profit_percent": s.take_profit_percent,
+            "stop_loss_percent": float(s.stop_loss_percent),
+            "take_profit_percent": float(s.take_profit_percent),
             "total_trades": s.total_trades,
-            "total_pnl": round(s.total_pnl, 2),
-            "win_rate": round(s.win_rate, 2),
+            "total_pnl": float(round(s.total_pnl, 2)),
+            "win_rate": float(round(s.win_rate, 2)),
             "created_at": s.created_at.isoformat() if s.created_at else None,
         }
         for s in strategies
@@ -75,7 +75,7 @@ async def create_strategy(
     )
     db.add(log)
 
-    return {"success": True, "strategy_id": strategy.id}
+    return {"success": True, "strategy_id": str(strategy.id)}
 
 
 async def toggle_strategy(db: AsyncSession, user_id: str, strategy_id: str) -> dict:
@@ -159,7 +159,7 @@ async def update_strategy(
     if take_profit_percent is not None:
         strategy.take_profit_percent = take_profit_percent
 
-    strategy.updated_at = datetime.utcnow()
+    strategy.updated_at = datetime.now(timezone.utc)
 
     log = AlgoLog(
         strategy_id=strategy.id,
@@ -183,7 +183,7 @@ async def get_strategy_logs(
     logs = result.scalars().all()
     return [
         {
-            "id": l.id,
+            "id": str(l.id),
             "level": l.level,
             "message": l.message,
             "data": l.data,

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -120,7 +120,7 @@ async def place_order(
         order.status = "FILLED"
         order.filled_quantity = quantity
         order.filled_price = current_price
-        order.executed_at = datetime.utcnow()
+        order.executed_at = datetime.now(timezone.utc)
 
         # Update portfolio
         await _update_portfolio_on_fill(
@@ -151,7 +151,9 @@ async def place_order(
                     "symbol": symbol,
                     "side": side,
                     "quantity": quantity,
-                    "filled_price": order.filled_price,
+                    "filled_price": (
+                        float(order.filled_price) if order.filled_price else None
+                    ),
                 },
                 user_id=user_id,
                 source="trading_engine",
@@ -180,13 +182,15 @@ async def place_order(
     return {
         "success": True,
         "order": {
-            "id": order.id,
+            "id": str(order.id),
             "symbol": order.symbol,
             "side": order.side,
             "order_type": order.order_type,
             "quantity": order.quantity,
-            "price": order.price,
-            "filled_price": order.filled_price,
+            "price": float(order.price) if order.price is not None else None,
+            "filled_price": (
+                float(order.filled_price) if order.filled_price is not None else None
+            ),
             "status": order.status,
             "created_at": order.created_at.isoformat() if order.created_at else None,
         },
@@ -329,7 +333,7 @@ async def cancel_order(db: AsyncSession, user_id: str, order_id: str) -> dict:
         }
 
     order.status = "CANCELLED"
-    order.updated_at = datetime.utcnow()
+    order.updated_at = datetime.now(timezone.utc)
 
     event_bus.emit_nowait(
         Event(
@@ -383,7 +387,7 @@ async def check_pending_orders(db: AsyncSession, user_id: str):
                 order.status = "FILLED"
                 order.filled_quantity = order.quantity
                 order.filled_price = current_price
-                order.executed_at = datetime.utcnow()
+                order.executed_at = datetime.now(timezone.utc)
                 await _update_portfolio_on_fill(
                     db,
                     portfolio,

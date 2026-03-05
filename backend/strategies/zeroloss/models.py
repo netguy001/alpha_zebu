@@ -1,42 +1,51 @@
 """
-AlphaSync ZeroLoss — SQLAlchemy ORM Models.
-
-These models are imported in database/connection.py's init_db() so that
-Base.metadata.create_all() picks them up automatically — no need to run
-the raw SQL migration manually during development.
-
-For production PostgreSQL deployments, use migration.sql instead.
+AlphaSync ZeroLoss — SQLAlchemy ORM Models (PostgreSQL).
 """
 
-import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from sqlalchemy import (
     Column,
     String,
-    Float,
     Integer,
+    Numeric,
     DateTime,
     Date,
     CheckConstraint,
+    Index,
+    text,
 )
 from database.connection import Base
 
 
-class ZeroLossSignal(Base):
-    """Persisted signal produced by the ZeroLoss strategy engine."""
+def _utcnow():
+    return datetime.now(timezone.utc)
 
+
+class ZeroLossSignal(Base):
     __tablename__ = "zeroloss_signals"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol = Column(String(30), nullable=False, index=True)
-    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
-    confidence_score = Column(Float, nullable=False, default=0)
+    timestamp = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        server_default=text("now()"),
+    )
+    confidence_score = Column(Numeric(precision=6, scale=2), nullable=False, default=0)
     direction = Column(String(10), nullable=False)  # LONG / SHORT / NO_TRADE
-    entry_price = Column(Float, nullable=True)
-    stop_loss = Column(Float, nullable=True)
-    target = Column(Float, nullable=True)
-    status = Column(String(15), nullable=False, default="WAITING")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    entry_price = Column(Numeric(precision=14, scale=2), nullable=True)
+    stop_loss = Column(Numeric(precision=14, scale=2), nullable=True)
+    target = Column(Numeric(precision=14, scale=2), nullable=True)
+    status = Column(
+        String(15), nullable=False, default="WAITING", server_default=text("'WAITING'")
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        server_default=text("now()"),
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -47,21 +56,32 @@ class ZeroLossSignal(Base):
             "status IN ('WAITING', 'ACTIVE', 'PROFIT', 'BREAKEVEN')",
             name="ck_zeroloss_status",
         ),
+        Index("ix_zeroloss_signals_symbol_ts", "symbol", "timestamp"),
     )
 
 
 class ZeroLossPerformance(Base):
-    """Daily aggregated performance for the ZeroLoss strategy."""
-
     __tablename__ = "zeroloss_performance"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     date = Column(Date, nullable=False, unique=True)
-    total_trades = Column(Integer, nullable=False, default=0)
-    profit_trades = Column(Integer, nullable=False, default=0)
-    breakeven_trades = Column(Integer, nullable=False, default=0)
-    loss_trades = Column(Integer, nullable=False, default=0)
-    net_pnl = Column(Float, nullable=False, default=0)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    total_trades = Column(Integer, nullable=False, default=0, server_default=text("0"))
+    profit_trades = Column(Integer, nullable=False, default=0, server_default=text("0"))
+    breakeven_trades = Column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    loss_trades = Column(Integer, nullable=False, default=0, server_default=text("0"))
+    net_pnl = Column(
+        Numeric(precision=16, scale=2),
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        server_default=text("now()"),
+    )
 
     __table_args__ = (CheckConstraint("loss_trades = 0", name="ck_zeroloss_no_losses"),)

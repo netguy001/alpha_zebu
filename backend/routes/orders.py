@@ -66,16 +66,20 @@ async def get_orders(
     return {
         "orders": [
             {
-                "id": o.id,
+                "id": str(o.id),
                 "symbol": o.symbol,
                 "exchange": o.exchange,
                 "order_type": o.order_type,
                 "side": o.side,
                 "quantity": o.quantity,
-                "price": o.price,
-                "trigger_price": o.trigger_price,
+                "price": float(o.price) if o.price is not None else None,
+                "trigger_price": (
+                    float(o.trigger_price) if o.trigger_price is not None else None
+                ),
                 "filled_quantity": o.filled_quantity,
-                "filled_price": o.filled_price,
+                "filled_price": (
+                    float(o.filled_price) if o.filled_price is not None else None
+                ),
                 "status": o.status,
                 "created_at": o.created_at.isoformat() if o.created_at else None,
                 "executed_at": o.executed_at.isoformat() if o.executed_at else None,
@@ -99,16 +103,20 @@ async def get_order(
         raise HTTPException(status_code=404, detail="Order not found")
 
     return {
-        "id": order.id,
+        "id": str(order.id),
         "symbol": order.symbol,
         "exchange": order.exchange,
         "order_type": order.order_type,
         "side": order.side,
         "quantity": order.quantity,
-        "price": order.price,
-        "trigger_price": order.trigger_price,
+        "price": float(order.price) if order.price is not None else None,
+        "trigger_price": (
+            float(order.trigger_price) if order.trigger_price is not None else None
+        ),
         "filled_quantity": order.filled_quantity,
-        "filled_price": order.filled_price,
+        "filled_price": (
+            float(order.filled_price) if order.filled_price is not None else None
+        ),
         "status": order.status,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "executed_at": order.executed_at.isoformat() if order.executed_at else None,

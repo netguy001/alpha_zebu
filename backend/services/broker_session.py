@@ -22,7 +22,7 @@ Lifecycle:
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import select, and_
@@ -54,12 +54,16 @@ class BrokerSessionManager:
         """
         # Avoid duplicate sessions
         if user_id in self._sessions:
-            logger.info(f"Session already exists for user {user_id[:8]}..., refreshing")
+            logger.info(
+                f"Session already exists for user {str(user_id)[:8]}..., refreshing"
+            )
             await self.destroy_session(user_id)
 
         creds = await self._load_credentials(user_id)
         if not creds:
-            logger.warning(f"No active broker credentials for user {user_id[:8]}...")
+            logger.warning(
+                f"No active broker credentials for user {str(user_id)[:8]}..."
+            )
             return False
 
         provider = await self._create_provider(creds)
@@ -73,7 +77,7 @@ class BrokerSessionManager:
         await self._auto_subscribe(provider)
 
         logger.info(
-            f"Broker session CREATED for user {user_id[:8]}... "
+            f"Broker session CREATED for user {str(user_id)[:8]}... "
             f"(total sessions: {len(self._sessions)})"
         )
         return True
@@ -105,9 +109,11 @@ class BrokerSessionManager:
             try:
                 await provider.stop()
             except Exception as e:
-                logger.error(f"Error stopping provider for user {user_id[:8]}...: {e}")
+                logger.error(
+                    f"Error stopping provider for user {str(user_id)[:8]}...: {e}"
+                )
             logger.info(
-                f"Broker session DESTROYED for user {user_id[:8]}... "
+                f"Broker session DESTROYED for user {str(user_id)[:8]}... "
                 f"(remaining: {len(self._sessions)})"
             )
             return True
@@ -145,7 +151,9 @@ class BrokerSessionManager:
 
             restored = 0
             for account in accounts:
-                if account.token_expiry and account.token_expiry < datetime.utcnow():
+                if account.token_expiry and account.token_expiry < datetime.now(
+                    timezone.utc
+                ):
                     continue
                 try:
                     created = await self.create_session(account.user_id)
@@ -154,7 +162,7 @@ class BrokerSessionManager:
                 except Exception as e:
                     logger.error(
                         f"Failed to restore session for user "
-                        f"{account.user_id[:8]}...: {e}"
+                        f"{str(account.user_id)[:8]}...: {e}"
                     )
 
             logger.info(f"Restored {restored} broker sessions from DB")
@@ -188,7 +196,7 @@ class BrokerSessionManager:
                         await self._check_session_health(user_id)
                     except Exception as e:
                         logger.error(
-                            f"Health check failed for user {user_id[:8]}...: {e}"
+                            f"Health check failed for user {str(user_id)[:8]}...: {e}"
                         )
         except asyncio.CancelledError:
             return
@@ -210,15 +218,17 @@ class BrokerSessionManager:
 
             if not account:
                 logger.warning(
-                    f"Broker account disappeared for user {user_id[:8]}..., "
+                    f"Broker account disappeared for user {str(user_id)[:8]}..., "
                     "destroying session"
                 )
                 await self.destroy_session(user_id)
                 return
 
-            if account.token_expiry and account.token_expiry < datetime.utcnow():
+            if account.token_expiry and account.token_expiry < datetime.now(
+                timezone.utc
+            ):
                 logger.warning(
-                    f"Token expired for user {user_id[:8]}..., destroying session"
+                    f"Token expired for user {str(user_id)[:8]}..., destroying session"
                 )
                 account.is_active = False
                 await session.commit()
@@ -246,7 +256,9 @@ class BrokerSessionManager:
             if not account:
                 return None
 
-            if account.token_expiry and account.token_expiry < datetime.utcnow():
+            if account.token_expiry and account.token_expiry < datetime.now(
+                timezone.utc
+            ):
                 return None
 
             session_token = decrypt_token(account.access_token_enc)
@@ -260,7 +272,9 @@ class BrokerSessionManager:
                 "broker_user_id": account.broker_user_id,
             }
         except Exception as e:
-            logger.error(f"Failed to load credentials for user {user_id[:8]}...: {e}")
+            logger.error(
+                f"Failed to load credentials for user {str(user_id)[:8]}...: {e}"
+            )
             return None
         finally:
             await session.close()
@@ -306,7 +320,7 @@ class BrokerSessionManager:
         """Return session manager status for health endpoint."""
         return {
             "active_sessions": len(self._sessions),
-            "user_ids": [uid[:8] + "..." for uid in self._sessions.keys()],
+            "user_ids": [str(uid)[:8] + "..." for uid in self._sessions.keys()],
             "running": self._running,
         }
 

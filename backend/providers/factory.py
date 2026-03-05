@@ -43,5 +43,7 @@ async def create_zebu_provider(
         redis_client=redis_cache,
     )
 
-    logger.info(f"Created ZebuProvider for user {user_id[:8] if user_id else '?'}...")
+    logger.info(
+        f"Created ZebuProvider for user {str(user_id)[:8] if user_id else '?'}..."
+    )
     return provider

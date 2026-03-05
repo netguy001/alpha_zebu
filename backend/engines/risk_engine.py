@@ -33,12 +33,12 @@ IST = ZoneInfo("Asia/Kolkata")
 class RiskLimits:
     """Configurable risk parameters. Defaults are conservative for demo."""
 
-    max_position_size: int = 500           # Max qty per symbol per order
+    max_position_size: int = 500  # Max qty per symbol per order
     max_capital_per_trade: float = 200000  # ₹2L per trade
-    max_portfolio_exposure: float = 0.80   # 80% of total capital
-    max_daily_loss: float = 50000          # ₹50K daily loss limit
-    max_open_orders: int = 20             # Max concurrent open orders
-    algo_kill_switch: bool = False         # Emergency stop for all algos
+    max_portfolio_exposure: float = 0.80  # 80% of total capital
+    max_daily_loss: float = 50000  # ₹50K daily loss limit
+    max_open_orders: int = 20  # Max concurrent open orders
+    algo_kill_switch: bool = False  # Emergency stop for all algos
 
 
 @dataclass
@@ -88,7 +88,10 @@ class RiskEngine:
             ("market_session", self._check_market_session()),
             ("position_size", self._check_position_size(quantity)),
             ("capital_per_trade", self._check_capital_per_trade(price, quantity, side)),
-            ("capital_exposure", await self._check_capital_exposure(db, user_id, price, quantity, side)),
+            (
+                "capital_exposure",
+                await self._check_capital_exposure(db, user_id, price, quantity, side),
+            ),
             ("open_order_limit", await self._check_open_order_limit(db, user_id)),
             ("daily_loss_limit", await self._check_daily_loss_limit(db, user_id)),
         ]
@@ -97,7 +100,7 @@ class RiskEngine:
             if not result.passed:
                 result.check_name = check_name
                 logger.warning(
-                    f"Risk check FAILED [{check_name}] for user={user_id[:8]}...: {result.reason}"
+                    f"Risk check FAILED [{check_name}] for user={str(user_id)[:8]}...: {result.reason}"
                 )
                 return result
 
@@ -146,7 +149,10 @@ class RiskEngine:
             return RiskResult(
                 passed=False,
                 reason=f"Trade value (₹{trade_value:,.2f}) exceeds per-trade limit (₹{self.limits.max_capital_per_trade:,.2f}).",
-                details={"trade_value": trade_value, "limit": self.limits.max_capital_per_trade},
+                details={
+                    "trade_value": trade_value,
+                    "limit": self.limits.max_capital_per_trade,
+                },
             )
         return RiskResult(passed=True)
 
@@ -162,9 +168,7 @@ class RiskEngine:
         if side != "BUY":
             return RiskResult(passed=True)
 
-        result = await db.execute(
-            select(Portfolio).where(Portfolio.user_id == user_id)
-        )
+        result = await db.execute(select(Portfolio).where(Portfolio.user_id == user_id))
         portfolio = result.scalar_one_or_none()
         if not portfolio:
             return RiskResult(passed=True)  # No portfolio = new user
@@ -180,7 +184,10 @@ class RiskEngine:
                     f"This trade would bring portfolio exposure to {exposure_ratio:.0%}, "
                     f"exceeding the {self.limits.max_portfolio_exposure:.0%} limit."
                 ),
-                details={"exposure": exposure_ratio, "limit": self.limits.max_portfolio_exposure},
+                details={
+                    "exposure": exposure_ratio,
+                    "limit": self.limits.max_portfolio_exposure,
+                },
             )
         return RiskResult(passed=True)
 
@@ -199,7 +206,10 @@ class RiskEngine:
             return RiskResult(
                 passed=False,
                 reason=f"You have {open_count} open orders (limit: {self.limits.max_open_orders}). Cancel some before placing new orders.",
-                details={"open_orders": open_count, "limit": self.limits.max_open_orders},
+                details={
+                    "open_orders": open_count,
+                    "limit": self.limits.max_open_orders,
+                },
             )
         return RiskResult(passed=True)
 

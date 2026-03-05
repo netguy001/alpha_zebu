@@ -30,7 +30,7 @@ const TABS = [
  * point directly at the backend origin for static files.
  */
 const BACKEND_ORIGIN =
-  import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:8000";
+  import.meta.env.VITE_API_URL?.replace("/api", "") || "";
 
 function resolveAvatarUrl(url) {
   if (!url) return null;
@@ -244,11 +244,10 @@ function AvatarUpload({ user, onUpdate }) {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
-          className={`w-full max-w-xs border-2 border-dashed rounded-xl px-4 py-3 text-center transition-colors duration-150 cursor-pointer ${
-            dragOver
+          className={`w-full max-w-xs border-2 border-dashed rounded-xl px-4 py-3 text-center transition-colors duration-150 cursor-pointer ${dragOver
               ? "border-primary-500 bg-primary-500/10"
               : "border-edge/20 hover:border-primary-500/40 hover:bg-primary-500/5"
-          }`}
+            }`}
         >
           <HiOutlinePhotograph className="w-5 h-5 text-gray-500 mx-auto mb-1" />
           <p className="text-[11px] text-gray-500">
@@ -383,11 +382,10 @@ export default function SettingsPage() {
               key={id}
               onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-                                ${
-                                  activeTab === id
-                                    ? "bg-primary-600/15 text-primary-400 border-l-[3px] border-primary-500"
-                                    : "text-gray-400 hover:text-heading hover:bg-overlay/5 border-l-[3px] border-transparent"
-                                }`}
+                                ${activeTab === id
+                  ? "bg-primary-600/15 text-primary-400 border-l-[3px] border-primary-500"
+                  : "text-gray-400 hover:text-heading hover:bg-overlay/5 border-l-[3px] border-transparent"
+                }`}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}

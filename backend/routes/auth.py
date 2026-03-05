@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from database.connection import get_db
 from models.user import User, TwoFactorAuth, UserSession
 from models.portfolio import Portfolio
@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 security = HTTPBearer(auto_error=False)
 
 # --- Schemas ---
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -133,8 +134,9 @@ async def register(
     db.add(portfolio)
 
     # Generate tokens
-    access_token = create_access_token({"sub": user.id, "email": user.email})
-    refresh_token = create_refresh_token({"sub": user.id})
+    uid = str(user.id)
+    access_token = create_access_token({"sub": uid, "email": user.email})
+    refresh_token = create_refresh_token({"sub": uid})
 
     # Track session
     access_payload = decode_token(access_token)
@@ -144,7 +146,7 @@ async def register(
             token_jti=access_payload.get("jti", ""),
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent", "")[:500],
-            expires_at=datetime.utcnow()
+            expires_at=datetime.now(timezone.utc)
             + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
         )
         db.add(session)
@@ -152,8 +154,8 @@ async def register(
     event_bus.emit_nowait(
         Event(
             type=EventType.USER_LOGIN,
-            data={"user_id": user.id, "email": user.email, "action": "register"},
-            user_id=user.id,
+            data={"user_id": uid, "email": user.email, "action": "register"},
+            user_id=uid,
             source="auth",
         )
     )
@@ -161,7 +163,7 @@ async def register(
     return {
         "message": "Registration successful",
         "user": {
-            "id": user.id,
+            "id": uid,
             "email": user.email,
             "username": user.username,
             "full_name": user.full_name,
@@ -197,8 +199,9 @@ async def login(
         if not verify_2fa_code(tfa.secret, req.totp_code):
             raise HTTPException(status_code=401, detail="Invalid 2FA code")
 
-    access_token = create_access_token({"sub": user.id, "email": user.email})
-    refresh_token = create_refresh_token({"sub": user.id})
+    uid = str(user.id)
+    access_token = create_access_token({"sub": uid, "email": user.email})
+    refresh_token = create_refresh_token({"sub": uid})
 
     # Track session
     access_payload = decode_token(access_token)
@@ -208,7 +211,7 @@ async def login(
             token_jti=access_payload.get("jti", ""),
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent", "")[:500],
-            expires_at=datetime.utcnow()
+            expires_at=datetime.now(timezone.utc)
             + timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES),
         )
         db.add(session)
@@ -216,8 +219,8 @@ async def login(
     event_bus.emit_nowait(
         Event(
             type=EventType.USER_LOGIN,
-            data={"user_id": user.id, "email": user.email},
-            user_id=user.id,
+            data={"user_id": uid, "email": user.email},
+            user_id=uid,
             source="auth",
         )
     )
@@ -225,12 +228,12 @@ async def login(
     return {
         "message": "Login successful",
         "user": {
-            "id": user.id,
+            "id": uid,
             "email": user.email,
             "username": user.username,
             "full_name": user.full_name,
             "role": user.role,
-            "virtual_capital": user.virtual_capital,
+            "virtual_capital": float(user.virtual_capital),
         },
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -241,12 +244,12 @@ async def login(
 @router.get("/me")
 async def get_me(user: User = Depends(get_current_user)):
     return {
-        "id": user.id,
+        "id": str(user.id),
         "email": user.email,
         "username": user.username,
         "full_name": user.full_name,
         "role": user.role,
-        "virtual_capital": user.virtual_capital,
+        "virtual_capital": float(user.virtual_capital),
         "is_verified": user.is_verified,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
@@ -337,7 +340,7 @@ async def refresh_token(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
-    new_access = create_access_token({"sub": user.id, "email": user.email})
+    new_access = create_access_token({"sub": str(user.id), "email": user.email})
     return {"access_token": new_access, "token_type": "bearer"}
 
 

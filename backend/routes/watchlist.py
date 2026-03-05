@@ -13,8 +13,10 @@ router = APIRouter(prefix="/api/watchlist", tags=["Watchlist"])
 class CreateWatchlistRequest(BaseModel):
     name: str = "My Watchlist"
 
+
 class RenameWatchlistRequest(BaseModel):
     name: str
+
 
 class AddItemRequest(BaseModel):
     symbol: str
@@ -26,9 +28,7 @@ async def get_watchlists(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Watchlist).where(Watchlist.user_id == user.id)
-    )
+    result = await db.execute(select(Watchlist).where(Watchlist.user_id == user.id))
     watchlists = result.scalars().all()
 
     wl_list = []
@@ -37,14 +37,16 @@ async def get_watchlists(
             select(WatchlistItem).where(WatchlistItem.watchlist_id == wl.id)
         )
         items = items_result.scalars().all()
-        wl_list.append({
-            "id": wl.id,
-            "name": wl.name,
-            "items": [
-                {"id": i.id, "symbol": i.symbol, "exchange": i.exchange}
-                for i in items
-            ],
-        })
+        wl_list.append(
+            {
+                "id": str(wl.id),
+                "name": wl.name,
+                "items": [
+                    {"id": str(i.id), "symbol": i.symbol, "exchange": i.exchange}
+                    for i in items
+                ],
+            }
+        )
 
     return {"watchlists": wl_list}
 
@@ -60,7 +62,7 @@ async def create_watchlist(
     wl = Watchlist(user_id=user.id, name=name)
     db.add(wl)
     await db.flush()
-    return {"id": wl.id, "name": wl.name, "items": []}
+    return {"id": str(wl.id), "name": wl.name, "items": []}
 
 
 @router.patch("/{watchlist_id}")
@@ -85,7 +87,7 @@ async def rename_watchlist(
 
     wl.name = name
     await db.flush()
-    return {"id": wl.id, "name": wl.name}
+    return {"id": str(wl.id), "name": wl.name}
 
 
 @router.post("/{watchlist_id}/items")
@@ -120,7 +122,7 @@ async def add_item(
     )
     db.add(item)
     await db.flush()
-    return {"id": item.id, "symbol": item.symbol, "exchange": item.exchange}
+    return {"id": str(item.id), "symbol": item.symbol, "exchange": item.exchange}
 
 
 @router.delete("/{watchlist_id}")

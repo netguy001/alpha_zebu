@@ -26,6 +26,7 @@ class UpdateProfileRequest(BaseModel):
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
 
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
@@ -34,14 +35,16 @@ class ChangePasswordRequest(BaseModel):
 @router.get("/profile")
 async def get_profile(user: User = Depends(get_current_user)):
     return {
-        "id": user.id,
+        "id": str(user.id),
         "email": user.email,
         "username": user.username,
         "full_name": user.full_name,
         "phone": user.phone,
         "avatar_url": user.avatar_url,
         "role": user.role,
-        "virtual_capital": user.virtual_capital,
+        "virtual_capital": (
+            float(user.virtual_capital) if user.virtual_capital is not None else None
+        ),
         "is_verified": user.is_verified,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
@@ -78,6 +81,7 @@ async def change_password(
 
 # ── Avatar upload ─────────────────────────────────────────────────────────────
 
+
 @router.post("/avatar")
 async def upload_avatar(
     avatar: UploadFile = File(...),
@@ -88,13 +92,15 @@ async def upload_avatar(
     if avatar.content_type not in ALLOWED_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Invalid file type. Only JPG, PNG, GIF, and WebP are allowed."
+            detail="Invalid file type. Only JPG, PNG, GIF, and WebP are allowed.",
         )
 
     # Read and validate size
     contents = await avatar.read()
     if len(contents) > MAX_SIZE_BYTES:
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 2MB.")
+        raise HTTPException(
+            status_code=400, detail="File too large. Maximum size is 2MB."
+        )
 
     # Delete old avatar file from disk if it exists
     if user.avatar_url:
@@ -141,11 +147,12 @@ async def delete_avatar(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _get_extension(content_type: str) -> str:
     return {
         "image/jpeg": ".jpg",
-        "image/png":  ".png",
-        "image/gif":  ".gif",
+        "image/png": ".png",
+        "image/gif": ".gif",
         "image/webp": ".webp",
     }.get(content_type, ".jpg")
 
@@ -153,5 +160,5 @@ def _get_extension(content_type: str) -> str:
 def _url_to_path(url: str) -> Optional[str]:
     """Convert a public URL like /uploads/avatars/x.jpg to a local file path."""
     if url and url.startswith("/uploads/"):
-        return url.lstrip("/")   # → uploads/avatars/x.jpg
+        return url.lstrip("/")  # → uploads/avatars/x.jpg
     return None

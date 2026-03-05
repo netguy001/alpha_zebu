@@ -24,7 +24,7 @@ import uuid
 import logging
 from enum import Enum
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Callable, Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class Event:
     type: EventType
     data: dict = field(default_factory=dict)
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     user_id: Optional[str] = None
     source: Optional[str] = None  # e.g. "order_worker", "algo_worker"
 
@@ -170,8 +170,7 @@ class EventBus:
             **self._stats,
             "queue_size": self._queue.qsize(),
             "registered_handlers": {
-                evt.value: len(handlers)
-                for evt, handlers in self._handlers.items()
+                evt.value: len(handlers) for evt, handlers in self._handlers.items()
             },
         }
 
