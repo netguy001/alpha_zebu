@@ -8,6 +8,7 @@ __pycache__/
 .env.local
 .env.production
 deploy/.env.production
+firebase-credentials.json
 
 # ── Build outputs ────────────────────────────────────────────
 frontend/dist/

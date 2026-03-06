@@ -19,6 +19,7 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - uploads:/app/uploads
+      - ./firebase-credentials.json:/app/firebase-credentials.json:ro
     environment:
       - DEBUG=false
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-alphasync}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-alphasync}
@@ -32,7 +33,7 @@ services:
       - ZEBU_REDIRECT_URI=https://www.alphasync.app/broker/callback
       - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY}
       - SIMULATION_MODE=${SIMULATION_MODE:-false}
-      - FIREBASE_CREDENTIALS_JSON=${FIREBASE_CREDENTIALS_JSON}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
     depends_on:
       db:
         condition: service_healthy
