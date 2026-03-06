@@ -207,8 +207,22 @@ async def root():
 @app.get("/api/health")
 async def health():
     """Enhanced health endpoint with worker, engine, and session status."""
+    import config.firebase as fb_mod
+    import os
+
+    creds_path = os.environ.get("FIREBASE_CREDENTIALS_PATH", "")
+    creds_json_set = bool(os.environ.get("FIREBASE_CREDENTIALS_JSON", ""))
+    creds_file_exists = os.path.isfile(creds_path) if creds_path else False
+    creds_file_size = os.path.getsize(creds_path) if creds_file_exists else 0
     return {
         "status": "healthy",
+        "firebase": {
+            "initialized": fb_mod._initialized,
+            "credentials_path": creds_path,
+            "credentials_file_exists": creds_file_exists,
+            "credentials_file_size": creds_file_size,
+            "credentials_json_env_set": creds_json_set,
+        },
         "market_session": market_session.get_session_info(),
         "event_bus": event_bus.get_stats(),
         "broker_sessions": broker_session_manager.get_status(),
