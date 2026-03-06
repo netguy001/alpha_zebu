@@ -112,8 +112,8 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             docker compose -f docker-compose.prod.yml pull
 
-            # Deploy with zero-downtime restart
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            # Deploy — force recreate to pick up new credentials and config
+            docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
             # Run database migrations
             docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
