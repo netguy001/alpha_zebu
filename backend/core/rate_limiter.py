@@ -1,8 +1,9 @@
 """
-AlphaSync Rate Limiter — In-memory request throttling middleware.
+AlphaSync Rate Limiter — Redis-backed request throttling middleware.
 
 Provides per-IP rate limiting for auth endpoints (login, register)
-to prevent brute-force attacks. Uses a sliding window counter.
+to prevent brute-force attacks. Uses a sliding window counter stored in Redis.
+Falls back to in-memory if Redis is unavailable.
 
 Usage:
     Applied as FastAPI middleware in main.py.
@@ -28,23 +29,36 @@ RATE_LIMITS = {
 # Default rate limit for all other API endpoints
 DEFAULT_RATE_LIMIT = {"max_requests": 120, "window_seconds": 60}
 
+# Redis key prefix for rate limiting
+_RL_PREFIX = "alphasync:ratelimit"
+
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
     Sliding-window rate limiter keyed by client IP + path prefix.
 
-    Design decisions:
-    - In-memory only (no Redis dependency for demo platform).
-    - Cleans up expired entries periodically to prevent memory leaks.
-    - Skips non-API paths (static files, WebSocket, health).
+    Uses Redis sorted sets for persistence across restarts.
+    Falls back to in-memory dict if Redis is unavailable.
+    Skips non-API paths (static files, WebSocket, health).
     """
 
     def __init__(self, app):
         super().__init__(app)
-        # {(ip, path_prefix): [timestamp, timestamp, ...]}
+        # In-memory fallback
         self._requests: dict[tuple, list[float]] = defaultdict(list)
         self._last_cleanup = time.time()
         self._cleanup_interval = 300  # 5 minutes
+
+    async def _get_redis(self):
+        """Try to get the Redis connection, return None if unavailable."""
+        try:
+            from cache.redis_client import _price_cache
+
+            if _price_cache and _price_cache._redis:
+                return _price_cache._redis
+        except Exception:
+            pass
+        return None
 
     async def __call__(self, scope, receive, send):
         # CRITICAL: BaseHTTPMiddleware breaks WebSocket protocol.
@@ -72,19 +86,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         max_requests = config["max_requests"]
         window = config["window_seconds"]
-
-        # Sliding window check
         now = time.time()
-        key = (client_ip, path.split("/")[2] if len(path.split("/")) > 2 else "api")
 
-        # Clean old timestamps
-        self._requests[key] = [ts for ts in self._requests[key] if now - ts < window]
+        path_group = path.split("/")[2] if len(path.split("/")) > 2 else "api"
 
-        if len(self._requests[key]) >= max_requests:
-            retry_after = int(window - (now - self._requests[key][0])) + 1
+        # Try Redis first, fall back to in-memory
+        redis = await self._get_redis()
+        if redis:
+            is_limited, retry_after, count = await self._check_redis(
+                redis, client_ip, path_group, max_requests, window, now
+            )
+        else:
+            is_limited, retry_after, count = self._check_memory(
+                client_ip, path_group, max_requests, window, now
+            )
+
+        if is_limited:
             logger.warning(
                 f"Rate limit exceeded: {client_ip} on {path} "
-                f"({len(self._requests[key])}/{max_requests} in {window}s)"
+                f"({count}/{max_requests} in {window}s)"
             )
             return JSONResponse(
                 status_code=429,
@@ -95,6 +115,68 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": str(retry_after)},
             )
 
+        return await call_next(request)
+
+    async def _check_redis(
+        self,
+        redis,
+        client_ip: str,
+        path_group: str,
+        max_requests: int,
+        window: int,
+        now: float,
+    ) -> tuple[bool, int, int]:
+        """Sliding window check using Redis sorted set."""
+        key = f"{_RL_PREFIX}:{client_ip}:{path_group}"
+        cutoff = now - window
+
+        try:
+            pipe = redis.pipeline()
+            # Remove expired entries
+            pipe.zremrangebyscore(key, 0, cutoff)
+            # Count current entries
+            pipe.zcard(key)
+            results = await pipe.execute()
+            count = results[1]
+
+            if count >= max_requests:
+                # Get the oldest entry to calculate retry_after
+                oldest = await redis.zrange(key, 0, 0, withscores=True)
+                if oldest:
+                    retry_after = int(window - (now - oldest[0][1])) + 1
+                else:
+                    retry_after = window
+                return True, retry_after, count
+
+            # Add the current request
+            pipe2 = redis.pipeline()
+            pipe2.zadd(key, {f"{now}": now})
+            pipe2.expire(key, window + 10)  # TTL slightly longer than window
+            await pipe2.execute()
+            return False, 0, count + 1
+
+        except Exception as e:
+            logger.warning(f"Redis rate limit check failed, using in-memory: {e}")
+            return self._check_memory(client_ip, path_group, max_requests, window, now)
+
+    def _check_memory(
+        self,
+        client_ip: str,
+        path_group: str,
+        max_requests: int,
+        window: int,
+        now: float,
+    ) -> tuple[bool, int, int]:
+        """In-memory fallback sliding window check."""
+        key = (client_ip, path_group)
+
+        # Clean old timestamps
+        self._requests[key] = [ts for ts in self._requests[key] if now - ts < window]
+
+        if len(self._requests[key]) >= max_requests:
+            retry_after = int(window - (now - self._requests[key][0])) + 1
+            return True, retry_after, len(self._requests[key])
+
         self._requests[key].append(now)
 
         # Periodic cleanup of expired entries
@@ -102,7 +184,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             self._cleanup(now)
             self._last_cleanup = now
 
-        return await call_next(request)
+        return False, 0, len(self._requests[key])
 
     def _cleanup(self, now: float):
         """Remove expired entries to prevent memory growth."""

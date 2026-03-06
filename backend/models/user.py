@@ -127,3 +127,21 @@ class UserSession(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (Index("ix_user_sessions_active", "user_id", "is_active"),)
+
+
+class FailedLoginAttempt(Base):
+    __tablename__ = "failed_login_attempts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    attempted_at = Column(
+        DateTime(timezone=True),
+        default=_utcnow,
+        nullable=False,
+        server_default=text("now()"),
+    )

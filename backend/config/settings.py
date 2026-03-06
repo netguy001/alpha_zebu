@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     # 2FA
     TWO_FACTOR_ISSUER: str = "AlphaSync"
 
+    # Email verification (True = auto-verify for demo, False = require email confirmation)
+    AUTO_VERIFY_EMAIL: bool = True
+
     # ── New Architecture Settings ───────────────────────────────────
 
     # Worker intervals (seconds)

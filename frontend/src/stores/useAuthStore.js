@@ -38,7 +38,12 @@ export const useAuthStore = create((set, get) => ({
         return { success: true };
     },
 
-    logout: () => {
+    logout: async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch {
+            // Best-effort — clear local state regardless
+        }
         localStorage.removeItem('alphasync_token');
         localStorage.removeItem('alphasync_refresh');
         localStorage.removeItem('alphasync_user');
