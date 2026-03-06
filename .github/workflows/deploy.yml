@@ -71,7 +71,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           source: "docker-compose.prod.yml,deploy/"
-          target: /opt/alphasync
+          target: /opt/alphasync/alpha_zebu
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -81,7 +81,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: 22
           script: |
-            cd /opt/alphasync
+            cd /opt/alphasync/alpha_zebu
 
             # Login to GitHub Container Registry
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -94,12 +94,24 @@ jobs:
             # Deploy with zero-downtime restart
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
+            # Run database migrations
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+
             # Clean up old images
             docker image prune -f
 
             # Verify health
             sleep 10
-            curl -sf http://localhost:8000/api/health || echo "WARNING: Backend health check failed"
-            curl -sf http://localhost:80 || echo "WARNING: Frontend health check failed"
+            if ! curl -sf http://127.0.0.1:8000/api/health; then
+              echo "❌ Deployment failed — backend health check failed"
+              docker compose -f docker-compose.prod.yml logs backend --tail 50
+              exit 1
+            fi
+
+            if ! curl -sf http://127.0.0.1:3000; then
+              echo "❌ Deployment failed — frontend health check failed"
+              docker compose -f docker-compose.prod.yml logs frontend --tail 50
+              exit 1
+            fi
 
             echo "✅ Deployment complete — $(date)"
