@@ -32,6 +32,7 @@ services:
       - ZEBU_REDIRECT_URI=https://www.alphasync.app/broker/callback
       - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY}
       - SIMULATION_MODE=${SIMULATION_MODE:-false}
+      - FIREBASE_CREDENTIALS_JSON=${FIREBASE_CREDENTIALS_JSON}
     depends_on:
       db:
         condition: service_healthy
