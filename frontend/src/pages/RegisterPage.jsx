@@ -28,7 +28,7 @@ function StrengthBar({ password }) {
     /[^A-Za-z0-9]/.test(password),
   ].filter(Boolean).length;
   const configs = [
-    null,
+    { label: "Too short", bar: "bg-red-500/60", text: "text-red-400/60" },
     { label: "Weak", bar: "bg-red-500", text: "text-red-400" },
     { label: "Fair", bar: "bg-amber-400", text: "text-amber-400" },
     { label: "Good", bar: "bg-yellow-400", text: "text-yellow-400" },
