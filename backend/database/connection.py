@@ -40,7 +40,17 @@ async def get_db():
 async def init_db():
     async with engine.begin() as conn:
         # Ensure uuid-ossp extension is available for gen_random_uuid()
-        await conn.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
+        # Wrapped in DO block to handle race condition when multiple workers start simultaneously
+        await conn.execute(
+            text(
+                """
+            DO $$ BEGIN
+                CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+            EXCEPTION WHEN duplicate_object THEN NULL;
+            END $$;
+        """
+            )
+        )
         from models import user, order, portfolio, watchlist, algo  # noqa
         from models import broker as broker_model  # noqa
         from strategies.zeroloss import models as zeroloss_models  # noqa
