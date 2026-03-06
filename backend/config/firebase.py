@@ -71,7 +71,11 @@ def verify_firebase_token(id_token: str) -> Optional[dict]:
     Claims include: uid, email, name, picture, email_verified, etc.
     """
     if not _initialized:
-        init_firebase()
+        try:
+            init_firebase()
+        except Exception as e:
+            logger.error(f"Cannot verify token — Firebase init failed: {e}")
+            return None
 
     try:
         decoded = firebase_auth.verify_id_token(id_token, check_revoked=True)
