@@ -34,6 +34,14 @@ def init_firebase() -> None:
     if _initialized:
         return
 
+    # Clean up any previous failed initialization attempt
+    try:
+        firebase_admin.get_app()
+        # App exists from a failed init — delete it so we can retry
+        firebase_admin.delete_app(firebase_admin.get_app())
+    except ValueError:
+        pass  # No existing app — good
+
     try:
         if settings.FIREBASE_CREDENTIALS_JSON:
             cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
@@ -52,7 +60,6 @@ def init_firebase() -> None:
                 "Set FIREBASE_CREDENTIALS_JSON or FIREBASE_CREDENTIALS_PATH in .env. "
                 "Token verification will FAIL until this is fixed."
             )
-            # Falls back to GOOGLE_APPLICATION_CREDENTIALS env var
             firebase_admin.initialize_app()
             logger.info(
                 "Firebase Admin initialized from GOOGLE_APPLICATION_CREDENTIALS"
