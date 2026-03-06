@@ -24,9 +24,18 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    firebase_uid = Column(String(128), unique=True, nullable=True, index=True)
+    auth_provider = Column(
+        String(30),
+        default="firebase",
+        nullable=False,
+        server_default=text("'firebase'"),
+    )
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(
+        String(255), nullable=True
+    )  # nullable — Firebase users have no password
     full_name = Column(String(100), nullable=False)
     is_verified = Column(
         Boolean, default=False, nullable=False, server_default=text("false")

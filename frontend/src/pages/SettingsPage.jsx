@@ -9,7 +9,6 @@ import {
   HiOutlineLockClosed,
   HiOutlineMoon,
   HiOutlineSun,
-  HiCheckCircle,
   HiCamera,
   HiOutlinePhotograph,
   HiOutlineTrash,
@@ -19,7 +18,6 @@ const TABS = [
   { id: "profile", label: "Profile", icon: HiOutlineUser },
   { id: "security", label: "Security", icon: HiOutlineLockClosed },
   { id: "appearance", label: "Appearance", icon: HiOutlineSun },
-  { id: "2fa", label: "2FA", icon: HiOutlineShieldCheck },
 ];
 
 // ── Avatar URL helper ─────────────────────────────────────────────────────────
@@ -245,8 +243,8 @@ function AvatarUpload({ user, onUpdate }) {
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
           className={`w-full max-w-xs border-2 border-dashed rounded-xl px-4 py-3 text-center transition-colors duration-150 cursor-pointer ${dragOver
-              ? "border-primary-500 bg-primary-500/10"
-              : "border-edge/20 hover:border-primary-500/40 hover:bg-primary-500/5"
+            ? "border-primary-500 bg-primary-500/10"
+            : "border-edge/20 hover:border-primary-500/40 hover:bg-primary-500/5"
             }`}
         >
           <HiOutlinePhotograph className="w-5 h-5 text-gray-500 mx-auto mb-1" />
@@ -299,12 +297,6 @@ export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
 
   const [profile, setProfile] = useState({ full_name: "", phone: "" });
-  const [passwords, setPasswords] = useState({
-    current: "",
-    newPass: "",
-    confirm: "",
-  });
-  const [twoFA, setTwoFA] = useState({ setup: null, code: "", enabled: false });
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
 
@@ -326,42 +318,14 @@ export default function SettingsPage() {
     setLoading(false);
   };
 
-  const changePassword = async (e) => {
-    e.preventDefault();
-    if (passwords.newPass !== passwords.confirm)
-      return toast.error("Passwords do not match");
-    if (passwords.newPass.length < 8)
-      return toast.error("Password must be at least 8 characters");
-    setLoading(true);
+  const handleResetPassword = async () => {
+    if (!user?.email) return toast.error("No email found");
     try {
-      await api.put("/user/password", {
-        current_password: passwords.current,
-        new_password: passwords.newPass,
-      });
-      toast.success("Password changed");
-      setPasswords({ current: "", newPass: "", confirm: "" });
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Failed");
-    }
-    setLoading(false);
-  };
-
-  const setup2FA = async () => {
-    try {
-      const res = await api.post("/auth/2fa/setup");
-      setTwoFA((prev) => ({ ...prev, setup: res.data }));
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Failed");
-    }
-  };
-
-  const verify2FA = async () => {
-    try {
-      await api.post("/auth/2fa/verify", { code: twoFA.code });
-      toast.success("2FA enabled!");
-      setTwoFA({ setup: null, code: "", enabled: true });
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Invalid code");
+      const { resetPassword } = useAuthStore.getState();
+      await resetPassword(user.email);
+      toast.success("Password reset email sent! Check your inbox.");
+    } catch {
+      toast.error("Could not send reset email");
     }
   };
 
@@ -461,56 +425,32 @@ export default function SettingsPage() {
           {activeTab === "security" && (
             <div className="rounded-xl border border-edge/5 bg-surface-900/60 p-6">
               <h2 className="section-title text-xs mb-5">
-                Change Password
+                Account Security
               </h2>
-              <form onSubmit={changePassword} className="space-y-4">
-                <div>
-                  <label className="label-text">Current Password</label>
-                  <input
-                    type="password"
-                    value={passwords.current}
-                    onChange={(e) =>
-                      setPasswords((p) => ({ ...p, current: e.target.value }))
-                    }
-                    required
-                    className="input-field"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="label-text">New Password</label>
-                    <input
-                      type="password"
-                      value={passwords.newPass}
-                      onChange={(e) =>
-                        setPasswords((p) => ({ ...p, newPass: e.target.value }))
-                      }
-                      required
-                      minLength={8}
-                      className="input-field"
-                    />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-900/40 border border-edge/[0.03]">
+                  <div className="flex items-center gap-3">
+                    <HiOutlineShieldCheck className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <div className="text-sm font-medium text-heading">Authentication Provider</div>
+                      <div className="text-xs text-gray-500">Your account is secured by Firebase Authentication</div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="label-text">Confirm New Password</label>
-                    <input
-                      type="password"
-                      value={passwords.confirm}
-                      onChange={(e) =>
-                        setPasswords((p) => ({ ...p, confirm: e.target.value }))
-                      }
-                      required
-                      className="input-field"
-                    />
-                  </div>
+                  <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">Active</span>
                 </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary text-sm"
-                >
-                  {loading ? "Changing..." : "Change Password"}
-                </button>
-              </form>
+                <div className="flex items-center justify-between p-4 rounded-lg bg-surface-900/40 border border-edge/[0.03]">
+                  <div className="flex items-center gap-3">
+                    <HiOutlineLockClosed className="w-5 h-5 text-primary-400" />
+                    <div>
+                      <div className="text-sm font-medium text-heading">Reset Password</div>
+                      <div className="text-xs text-gray-500">Receive a password reset link via email</div>
+                    </div>
+                  </div>
+                  <button onClick={handleResetPassword} className="btn-primary text-xs px-3 py-1.5">
+                    Send Reset Email
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -548,81 +488,6 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* ── 2FA ── */}
-          {activeTab === "2fa" && (
-            <div className="rounded-xl border border-edge/5 bg-surface-900/60 p-6">
-              <h2 className="section-title text-xs mb-1">
-                Two-Factor Authentication
-              </h2>
-              <p className="text-xs text-gray-500 mb-5">
-                Add an extra layer of security
-              </p>
-              {twoFA.enabled ? (
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-profit/10 border border-profit/20 text-profit">
-                  <HiCheckCircle className="w-5 h-5" />
-                  <span className="text-sm font-semibold">2FA is enabled</span>
-                </div>
-              ) : twoFA.setup ? (
-                <div className="space-y-5">
-                  <p className="text-sm text-gray-400">
-                    Scan the QR code with your authenticator app:
-                  </p>
-                  <div className="w-fit bg-white p-3 rounded-xl">
-                    <img
-                      src={`data:image/png;base64,${twoFA.setup.qr_code}`}
-                      alt="2FA QR"
-                      className="w-44 h-44"
-                    />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-2">
-                      Or enter this secret manually:
-                    </p>
-                    <code className="text-sm text-primary-400 bg-primary-500/10 px-3 py-1.5 rounded-lg font-price border border-primary-500/20">
-                      {twoFA.setup.secret}
-                    </code>
-                  </div>
-                  <div>
-                    <label className="label-text">Verification Code</label>
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        value={twoFA.code}
-                        onChange={(e) =>
-                          setTwoFA((p) => ({ ...p, code: e.target.value }))
-                        }
-                        maxLength={6}
-                        placeholder="000000"
-                        className="input-field w-40 text-center font-price text-lg tracking-[0.5em]"
-                      />
-                      <button
-                        onClick={verify2FA}
-                        className="btn-primary text-sm"
-                      >
-                        Verify &amp; Enable
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/8 border border-amber-500/15 mb-5">
-                    <HiOutlineShieldCheck className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-300/80">
-                      Your account is not protected by 2FA. Enable it to secure
-                      your account.
-                    </p>
-                  </div>
-                  <button
-                    onClick={setup2FA}
-                    className="btn-primary text-sm inline-flex items-center gap-2"
-                  >
-                    <HiOutlineShieldCheck className="w-4 h-4" /> Setup 2FA
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

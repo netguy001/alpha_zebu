@@ -17,7 +17,11 @@ class Settings(BaseSettings):
     DB_POOL_RECYCLE: int = 3600
     DB_POOL_PRE_PING: bool = True
 
-    # JWT
+    # Firebase Authentication
+    FIREBASE_CREDENTIALS_JSON: str = ""  # JSON string of service account key
+    FIREBASE_CREDENTIALS_PATH: str = ""  # Path to service account JSON file
+
+    # JWT (legacy — kept for internal tokens like broker state)
     JWT_SECRET_KEY: str = "alphasync-default-jwt-secret-change-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

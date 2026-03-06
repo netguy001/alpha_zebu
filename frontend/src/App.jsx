@@ -1,10 +1,11 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './context/ThemeContext';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/ProtectedRoute';
 import ForceDarkMode from './components/ForceDarkMode';
+import { useAuthStore } from './stores/useAuthStore';
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────────
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -32,6 +33,11 @@ function PageSkeleton() {
 }
 
 export default function App() {
+    useEffect(() => {
+        const unsubscribe = useAuthStore.getState().initAuth();
+        return () => { if (typeof unsubscribe === 'function') unsubscribe(); };
+    }, []);
+
     return (
         <ThemeProvider>
             <BrowserRouter>

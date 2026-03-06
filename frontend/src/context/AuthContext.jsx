@@ -1,54 +1,17 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../services/api';
+// Legacy AuthContext — replaced by Firebase-based useAuthStore (stores/useAuthStore.js).
+// Kept as a thin shim so any remaining imports don't break at runtime.
+import { createContext, useContext } from 'react';
+import { useAuthStore } from '../stores/useAuthStore';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const token = localStorage.getItem('alphasync_token');
-        const stored = localStorage.getItem('alphasync_user');
-        if (token && stored) {
-            try {
-                setUser(JSON.parse(stored));
-            } catch { /* ignore */ }
-        }
-        setLoading(false);
-    }, []);
-
-    const login = useCallback(async (email, password, totpCode = null) => {
-        const res = await api.post('/auth/login', { email, password, totp_code: totpCode });
-        if (res.data.requires_2fa) return { requires2FA: true };
-        localStorage.setItem('alphasync_token', res.data.access_token);
-        localStorage.setItem('alphasync_refresh', res.data.refresh_token);
-        localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
-        setUser(res.data.user);
-        return { success: true };
-    }, []);
-
-    const register = useCallback(async (data) => {
-        const res = await api.post('/auth/register', data);
-        localStorage.setItem('alphasync_token', res.data.access_token);
-        localStorage.setItem('alphasync_refresh', res.data.refresh_token);
-        localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
-        setUser(res.data.user);
-        return { success: true };
-    }, []);
-
-    const logout = useCallback(() => {
-        localStorage.removeItem('alphasync_token');
-        localStorage.removeItem('alphasync_refresh');
-        localStorage.removeItem('alphasync_user');
-        setUser(null);
-    }, []);
-
-    return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
-            {children}
-        </AuthContext.Provider>
-    );
+    // No-op wrapper — auth is managed by useAuthStore + Firebase
+    return children;
 }
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+    const user = useAuthStore((s) => s.user);
+    const logout = useAuthStore((s) => s.logout);
+    return { user, logout, isAuthenticated: !!user };
+}

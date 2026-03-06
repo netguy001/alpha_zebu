@@ -9,7 +9,6 @@ from typing import Optional
 from database.connection import get_db
 from models.user import User
 from routes.auth import get_current_user
-from services.auth_service import hash_password, verify_password
 
 router = APIRouter(prefix="/api/user", tags=["User"])
 
@@ -25,11 +24,6 @@ class UpdateProfileRequest(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
 
 
 @router.get("/profile")
@@ -64,19 +58,6 @@ async def update_profile(
         user.avatar_url = req.avatar_url
     await db.flush()
     return {"message": "Profile updated successfully"}
-
-
-@router.put("/password")
-async def change_password(
-    req: ChangePasswordRequest,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    if not verify_password(req.current_password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    user.password_hash = hash_password(req.new_password)
-    await db.flush()
-    return {"message": "Password changed successfully"}
 
 
 # ── Avatar upload ─────────────────────────────────────────────────────────────

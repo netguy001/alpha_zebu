@@ -3,7 +3,6 @@ export const API_BASE = '/api';
 
 /** LocalStorage keys */
 export const LS_TOKEN = 'alphasync_token';
-export const LS_REFRESH = 'alphasync_refresh';
 export const LS_USER = 'alphasync_user';
 export const LS_THEME = 'alphasync_theme';
 export const LS_SIDEBAR = 'alphasync_sidebar_collapsed';

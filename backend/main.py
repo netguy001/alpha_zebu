@@ -32,6 +32,16 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # ── Startup ─────────────────────────────────────────────────────
     logger.info("Starting AlphaSync...")
+
+    # ── Initialize Firebase Admin SDK ───────────────────────────────
+    from config.firebase import init_firebase
+
+    try:
+        init_firebase()
+        logger.info("Firebase Admin SDK initialized")
+    except Exception as e:
+        logger.error(f"Firebase init failed: {e} — auth will not work!")
+
     await init_db()
 
     # ── Initialize Redis (for price cache, shared across sessions) ──
@@ -216,15 +226,28 @@ async def health():
 async def websocket_endpoint(websocket: WebSocket, client_id: str = None):
     connection_id = client_id or str(uuid.uuid4())
 
-    # Try to extract user_id from JWT token (query param or first message)
+    # Extract user_id from Firebase ID token (query param)
     user_id = None
     token = websocket.query_params.get("token")
     if token:
-        from services.auth_service import decode_token as _decode_jwt
+        from services.auth_service import verify_id_token
+        from sqlalchemy import select as sa_select
+        from models.user import User as UserModel
+        from database.connection import async_session_factory
 
-        payload = _decode_jwt(token)
-        if payload:
-            user_id = payload.get("sub")
+        claims = verify_id_token(token)
+        if claims:
+            firebase_uid = claims.get("uid")
+            if firebase_uid:
+                async with async_session_factory() as db:
+                    result = await db.execute(
+                        sa_select(UserModel).where(
+                            UserModel.firebase_uid == firebase_uid
+                        )
+                    )
+                    ws_user = result.scalar_one_or_none()
+                    if ws_user:
+                        user_id = str(ws_user.id)
 
     await manager.connect(websocket, connection_id, user_id=user_id)
     try:

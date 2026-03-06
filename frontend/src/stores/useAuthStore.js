@@ -1,9 +1,26 @@
 import { create } from 'zustand';
+import {
+    auth,
+    googleProvider,
+    signInWithPopup,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    sendPasswordResetEmail,
+    updateProfile,
+} from '../config/firebase';
 import api from '../services/api';
 
 /**
- * Auth store — replaces AuthContext.
- * Owns: user, token, isAuthenticated, login, register, logout, updateUser.
+ * Auth store — Firebase-based authentication.
+ *
+ * Flow:
+ *   1. User signs in via Firebase (Google popup / email+password)
+ *   2. Firebase returns an ID token
+ *   3. ID token sent to backend POST /api/auth/sync to find-or-create local user
+ *   4. Backend returns local user profile
+ *   5. All subsequent API calls use the Firebase ID token as Bearer
  */
 export const useAuthStore = create((set, get) => ({
     /** @type {object|null} */
@@ -14,51 +31,125 @@ export const useAuthStore = create((set, get) => ({
         } catch { return null; }
     })(),
 
+    /** @type {import('firebase/auth').User|null} */
+    firebaseUser: null,
+
     /** @type {boolean} */
-    loading: false,
+    loading: true,
+
+    /** @type {boolean} */
+    initializing: true,
+
+    // ─── Initialize Firebase auth listener ────────────────────────────────────
+
+    /**
+     * Call once on app mount to listen for Firebase auth state changes.
+     * Automatically gets fresh tokens and syncs with backend.
+     */
+    initAuth: () => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+            if (firebaseUser) {
+                set({ firebaseUser, loading: true });
+                try {
+                    const token = await firebaseUser.getIdToken();
+                    localStorage.setItem('alphasync_token', token);
+
+                    // Sync with backend
+                    const res = await api.post('/auth/sync', {});
+                    localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
+                    set({ user: res.data.user, loading: false, initializing: false });
+                } catch (err) {
+                    console.error('Auth sync failed:', err);
+                    // Clear invalid state
+                    localStorage.removeItem('alphasync_token');
+                    localStorage.removeItem('alphasync_user');
+                    set({ user: null, loading: false, initializing: false });
+                }
+            } else {
+                localStorage.removeItem('alphasync_token');
+                localStorage.removeItem('alphasync_user');
+                set({ user: null, firebaseUser: null, loading: false, initializing: false });
+            }
+        });
+        return unsubscribe;
+    },
 
     // ─── Actions ──────────────────────────────────────────────────────────────
 
-    login: async (email, password, totpCode = null) => {
-        const res = await api.post('/auth/login', { email, password, totp_code: totpCode });
-        if (res.data.requires_2fa) return { requires2FA: true };
-        localStorage.setItem('alphasync_token', res.data.access_token);
-        localStorage.setItem('alphasync_refresh', res.data.refresh_token);
+    loginWithGoogle: async () => {
+        const result = await signInWithPopup(auth, googleProvider);
+        const token = await result.user.getIdToken();
+        localStorage.setItem('alphasync_token', token);
+
+        const res = await api.post('/auth/sync', {});
         localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
-        set({ user: res.data.user });
+        set({ user: res.data.user, firebaseUser: result.user });
+        return { success: true, isNew: res.data.is_new_user };
+    },
+
+    loginWithEmail: async (email, password) => {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        const token = await result.user.getIdToken();
+        localStorage.setItem('alphasync_token', token);
+
+        const res = await api.post('/auth/sync', {});
+        localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
+        set({ user: res.data.user, firebaseUser: result.user });
         return { success: true };
     },
 
-    register: async (data) => {
-        const res = await api.post('/auth/register', data);
-        localStorage.setItem('alphasync_token', res.data.access_token);
-        localStorage.setItem('alphasync_refresh', res.data.refresh_token);
+    registerWithEmail: async (email, password, displayName, username) => {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+
+        // Set display name in Firebase
+        if (displayName) {
+            await updateProfile(result.user, { displayName });
+        }
+
+        const token = await result.user.getIdToken(true);
+        localStorage.setItem('alphasync_token', token);
+
+        const res = await api.post('/auth/sync', { username });
         localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
-        set({ user: res.data.user });
+        set({ user: res.data.user, firebaseUser: result.user });
         return { success: true };
+    },
+
+    resetPassword: async (email) => {
+        await sendPasswordResetEmail(auth, email);
     },
 
     logout: async () => {
         try {
             await api.post('/auth/logout');
         } catch {
-            // Best-effort — clear local state regardless
+            // Best-effort
         }
+        await signOut(auth);
         localStorage.removeItem('alphasync_token');
-        localStorage.removeItem('alphasync_refresh');
         localStorage.removeItem('alphasync_user');
-        set({ user: null });
+        set({ user: null, firebaseUser: null });
+    },
+
+    /**
+     * Get a fresh Firebase ID token (auto-refreshes if expired).
+     * Used by the API interceptor.
+     */
+    getToken: async () => {
+        const { firebaseUser } = get();
+        if (!firebaseUser) {
+            // Try getting from Firebase auth directly
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                return await currentUser.getIdToken();
+            }
+            return null;
+        }
+        return await firebaseUser.getIdToken();
     },
 
     /**
      * Partially update user fields in store + localStorage.
-     * Used by: avatar upload, profile form, any settings save.
-     * 
-     * @param {Partial<object>} patch - fields to merge into current user
-     * 
-     * @example
-     * updateUser({ avatar_url: 'https://...' })
-     * updateUser({ full_name: 'Bharath A', phone: '+91 99999 99999' })
      */
     updateUser: (patch) => {
         const current = get().user;
