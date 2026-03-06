@@ -101,10 +101,19 @@ async def sync_user(
     Returns the local user profile for the frontend store.
     """
     if not credentials:
+        logger.warning("Sync called without credentials")
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    claims = verify_id_token(credentials.credentials)
+    token = credentials.credentials
+    logger.info(
+        f"Sync request — token length: {len(token)}, first 20 chars: {token[:20]}..."
+    )
+
+    claims = verify_id_token(token)
     if not claims:
+        logger.error(
+            "Firebase token verification failed — is FIREBASE_CREDENTIALS_JSON set?"
+        )
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     firebase_uid = claims.get("uid")

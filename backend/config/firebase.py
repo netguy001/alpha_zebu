@@ -47,6 +47,11 @@ def init_firebase() -> None:
                 f"Firebase Admin initialized from file: {settings.FIREBASE_CREDENTIALS_PATH}"
             )
         else:
+            logger.error(
+                "⚠️  No Firebase credentials configured! "
+                "Set FIREBASE_CREDENTIALS_JSON or FIREBASE_CREDENTIALS_PATH in .env. "
+                "Token verification will FAIL until this is fixed."
+            )
             # Falls back to GOOGLE_APPLICATION_CREDENTIALS env var
             firebase_admin.initialize_app()
             logger.info(
