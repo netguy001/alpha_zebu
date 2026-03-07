@@ -76,6 +76,9 @@ jobs:
         run: |
           if [ -n "$FIREBASE_CREDS" ]; then
             printenv FIREBASE_CREDS > firebase-credentials.json
+            echo "✅ Firebase credentials written ($(wc -c < firebase-credentials.json) bytes)"
+            # Validate it's real JSON with required fields
+            python3 -c "import json; d=json.load(open('firebase-credentials.json')); assert d.get('type')=='service_account', 'Not a service account key'; print('✅ Valid service account for project:', d.get('project_id'))"
           else
             echo '{}' > firebase-credentials.json
             echo "⚠️  FIREBASE_CREDENTIALS_JSON secret is not set!"
@@ -101,8 +104,8 @@ jobs:
           script: |
             cd /opt/alphasync/alpha_zebu
 
-            # Secure Firebase credentials
-            chmod 600 firebase-credentials.json
+            # Firebase credentials must be readable by the non-root 'app' user inside Docker
+            chmod 644 firebase-credentials.json
 
             # Login to GitHub Container Registry
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin

@@ -49,11 +49,21 @@ def init_firebase() -> None:
             firebase_admin.initialize_app(cred)
             logger.info("Firebase Admin initialized from FIREBASE_CREDENTIALS_JSON")
         elif settings.FIREBASE_CREDENTIALS_PATH:
-            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+            import os
+
+            path = settings.FIREBASE_CREDENTIALS_PATH
+            if not os.path.isfile(path):
+                raise FileNotFoundError(f"Credentials file not found: {path}")
+            if not os.access(path, os.R_OK):
+                raise PermissionError(
+                    f"Cannot read credentials file: {path} — "
+                    f"check file permissions (current uid={os.getuid()}, "
+                    f"file owner={os.stat(path).st_uid}, "
+                    f"mode={oct(os.stat(path).st_mode)})"
+                )
+            cred = credentials.Certificate(path)
             firebase_admin.initialize_app(cred)
-            logger.info(
-                f"Firebase Admin initialized from file: {settings.FIREBASE_CREDENTIALS_PATH}"
-            )
+            logger.info(f"Firebase Admin initialized from file: {path}")
         else:
             logger.error(
                 "⚠️  No Firebase credentials configured! "
@@ -98,4 +108,5 @@ def verify_firebase_token(id_token: str) -> Optional[dict]:
         return None
     except Exception as e:
         logger.error(f"Firebase token verification error: {e}")
+        return None
         return None
