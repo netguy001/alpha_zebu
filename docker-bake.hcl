@@ -45,6 +45,6 @@ target "frontend" {
     VITE_FIREBASE_MESSAGING_SENDER_ID  = VITE_FIREBASE_MESSAGING_SENDER_ID
     VITE_FIREBASE_APP_ID               = VITE_FIREBASE_APP_ID
   }
-  cache-from = ["type=gha,scope=frontend"]
-  cache-to   = ["type=gha,scope=frontend,mode=max"]
+  cache-from = ["type=gha,scope=frontend-v2"]
+  cache-to   = ["type=gha,scope=frontend-v2,mode=max"]
 }

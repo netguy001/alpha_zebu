@@ -21,11 +21,11 @@ ENV VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID
 ENV VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
 
 # Copy package files first for better layer caching
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 
-# Install deps with cache mount for speed
+# Install deps — npm ci is faster (clean install from lockfile)
 RUN --mount=type=cache,target=/root/.npm \
-    npm install
+    npm ci
 
 # Copy source code
 COPY . .
