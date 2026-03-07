@@ -1,17 +1,13 @@
 import { memo, useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/cn';
 import { formatPrice, formatPercent } from '../../utils/formatters';
 
 /**
  * Single watchlist row.
  * — Default state : symbol name (left) + price & change% (right)
- * — Hover state   : symbol name (left) + [BUY] [SELL] buttons (right)
+ * — Hover state   : prices stay visible, action buttons appear as overlay
  * Price-flash animation on LTP change is preserved.
- *
- * FIXES:
- * - Removed hover jump/wiggle animation (was caused by transform/translate on hover)
- * - NSE/BSE badge now uses explicit colors visible in both dark & light mode
- * - Uses font-price for numeric values, ▲/▼ arrows for change direction
  */
 const WatchlistItem = memo(function WatchlistItem({
     item,
@@ -22,6 +18,7 @@ const WatchlistItem = memo(function WatchlistItem({
     onBuy,
     onSell,
 }) {
+    const navigate = useNavigate();
     const [flashClass, setFlashClass] = useState('');
     const [hovered, setHovered] = useState(false);
     const prevPriceRef = useRef(price?.price);
@@ -79,55 +76,61 @@ const WatchlistItem = memo(function WatchlistItem({
                 </div>
             </div>
 
-            {/* ── Right: price+change OR buy/sell on hover ─────────────────── */}
-            <div className="flex-shrink-0 ml-1">
-                {hovered ? (
-                    <div className="flex items-center gap-1.5">
+            {/* ── Right: price+change always visible, action buttons overlay on hover ── */}
+            <div className="flex-shrink-0 ml-1 relative">
+                {/* Prices — always visible */}
+                <div className={cn('flex flex-col items-end transition-opacity duration-150', hovered && 'opacity-30')}>
+                    <span className="text-[13px] font-price font-semibold text-heading tabular-nums">
+                        {price?.price != null ? formatPrice(price.price) : '—'}
+                    </span>
+                    <span className={cn(
+                        'flex items-center gap-0.5 text-[10px] font-price tabular-nums',
+                        changePositive ? 'text-bull' : 'text-bear'
+                    )}>
+                        <span className="text-[9px] leading-none">{changePositive ? '▲' : '▼'}</span>
+                        {price?.change_percent != null
+                            ? formatPercent(price.change_percent, 2)
+                            : '—'}
+                    </span>
+                </div>
+
+                {/* Action buttons — overlay on hover */}
+                {hovered && (
+                    <div className="absolute inset-0 flex items-center justify-end gap-1">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onBuy?.(item.symbol);
+                                const symbol = item.symbol?.endsWith('.NS') ? item.symbol : `${item.symbol}.NS`;
+                                navigate(`/terminal?symbol=${encodeURIComponent(symbol)}`);
                             }}
-                            className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-500 hover:bg-emerald-400 text-white transition-colors duration-150 leading-none"
+                            className="p-1 rounded text-gray-400 hover:text-primary-400 hover:bg-primary-500/10 transition-colors"
+                            title="Open chart"
                         >
-                            BUY
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 3v18h18" /><path d="M7 16l4-8 4 5 5-9" />
+                            </svg>
                         </button>
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSell?.(item.symbol);
-                            }}
-                            className="px-2 py-1 rounded-md text-[11px] font-bold bg-red-500 hover:bg-red-400 text-white transition-colors duration-150 leading-none"
+                            onClick={(e) => { e.stopPropagation(); onBuy?.(item.symbol); }}
+                            className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/90 hover:bg-emerald-400 text-white transition-colors leading-none"
                         >
-                            SELL
+                            B
                         </button>
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onRemove?.(item.id);
-                            }}
+                            onClick={(e) => { e.stopPropagation(); onSell?.(item.symbol); }}
+                            className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/90 hover:bg-red-400 text-white transition-colors leading-none"
+                        >
+                            S
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onRemove?.(item.id); }}
                             className="p-0.5 rounded text-gray-400 hover:text-red-400 transition-colors"
-                            title="Remove from watchlist"
+                            title="Remove"
                         >
                             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                                 <path d="M18 6L6 18M6 6l12 12" />
                             </svg>
                         </button>
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-end">
-                        <span className="text-[13px] font-price font-semibold text-heading tabular-nums">
-                            {price?.price != null ? formatPrice(price.price) : '—'}
-                        </span>
-                        <span className={cn(
-                            'flex items-center gap-0.5 text-[10px] font-price tabular-nums',
-                            changePositive ? 'text-bull' : 'text-bear'
-                        )}>
-                            <span className="text-[9px] leading-none">{changePositive ? '▲' : '▼'}</span>
-                            {price?.change_percent != null
-                                ? formatPercent(price.change_percent, 2)
-                                : '—'}
-                        </span>
                     </div>
                 )}
             </div>

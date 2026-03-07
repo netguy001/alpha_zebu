@@ -36,11 +36,11 @@
     --border-default: #2a2f3a;
     --border-strong: #3d4454;
     --brand-primary: #6366f1;
-    --brand-glow: rgba(99,102,241,0.15);
+    --brand-glow: rgba(99, 102, 241, 0.15);
     --bullish: #22c55e;
-    --bullish-dim: rgba(34,197,94,0.12);
+    --bullish-dim: rgba(34, 197, 94, 0.12);
     --bearish: #ef4444;
-    --bearish-dim: rgba(239,68,68,0.12);
+    --bearish-dim: rgba(239, 68, 68, 0.12);
     --neutral: #f59e0b;
     --text-primary: #f1f5f9;
     --text-secondary: #94a3b8;
@@ -93,11 +93,33 @@
   }
 
   /* Typography hierarchy — strategic weight usage */
-  h1, h2, h3 { font-weight: 600; }
-  h4, h5, h6 { font-weight: 500; }
-  p, span, div, td, th { font-weight: 400; }
-  label { font-weight: 500; }
-  button { font-weight: 500; }
+  h1,
+  h2,
+  h3 {
+    font-weight: 600;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-weight: 500;
+  }
+
+  p,
+  span,
+  div,
+  td,
+  th {
+    font-weight: 400;
+  }
+
+  label {
+    font-weight: 500;
+  }
+
+  button {
+    font-weight: 500;
+  }
 
   /* Custom scrollbar - dark */
   .dark ::-webkit-scrollbar,
@@ -218,29 +240,34 @@
   .signal-pill {
     @apply px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide inline-flex items-center gap-1;
   }
+
   .signal-pill.bullish {
     background: var(--bullish-dim);
     color: var(--bullish);
-    border: 1px solid rgba(34,197,94,0.2);
+    border: 1px solid rgba(34, 197, 94, 0.2);
   }
+
   .signal-pill.bearish {
     background: var(--bearish-dim);
     color: var(--bearish);
-    border: 1px solid rgba(239,68,68,0.2);
+    border: 1px solid rgba(239, 68, 68, 0.2);
   }
+
   .signal-pill.neutral {
-    background: rgba(245,158,11,0.12);
+    background: rgba(245, 158, 11, 0.12);
     color: var(--neutral);
-    border: 1px solid rgba(245,158,11,0.2);
+    border: 1px solid rgba(245, 158, 11, 0.2);
   }
 
   /* ─── KPI Card ─── */
   .kpi-card {
     @apply rounded-xl border border-edge/5 bg-surface-900/60 p-4 flex flex-col gap-1 transition-colors;
   }
+
   .kpi-card:hover {
     @apply border-edge/10 bg-surface-800/60;
   }
+
   .kpi-card-highlight {
     @apply kpi-card col-span-2 relative overflow-hidden;
   }
@@ -272,10 +299,12 @@
   @media (max-width: 1023px) {
     .terminal-grid {
       grid-template-columns: 1fr auto;
+      grid-template-rows: auto 1fr auto auto;
       grid-template-areas:
         "header  orders"
         "chart   orders"
-        "bottom  orders";
+        "bottom  orders"
+        "tradebar tradebar";
     }
   }
 
@@ -357,7 +386,7 @@
   .ticker-marquee {
     display: flex;
     width: max-content;
-    animation: ticker-scroll 80s linear infinite;
+    animation: ticker-scroll 120s linear infinite;
   }
 
   .ticker-marquee:hover {
@@ -401,6 +430,35 @@
 
     100% {
       transform: rotate(0deg);
+    }
+  }
+
+  /* ─── Price flash animations (watchlist LTP change) ─── */
+  .animate-price-up {
+    animation: price-flash-up 600ms ease-out;
+  }
+
+  .animate-price-down {
+    animation: price-flash-down 600ms ease-out;
+  }
+
+  @keyframes price-flash-up {
+    0% {
+      background-color: rgba(16, 185, 129, 0.25);
+    }
+
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes price-flash-down {
+    0% {
+      background-color: rgba(239, 68, 68, 0.25);
+    }
+
+    100% {
+      background-color: transparent;
     }
   }
 }

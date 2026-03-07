@@ -8,7 +8,7 @@ import { PanelContainer } from '.';
  * Positions Panel — shows open positions in a table.
  * Extracted from TradingTerminalPage BottomTabs → "positions" tab.
  */
-function PositionsPanel({ holdings = [], className }) {
+function PositionsPanel({ holdings = [], className, onSell }) {
     return (
         <PanelContainer title="Positions" noPadding className={className}
             actions={<span className="text-[10px] text-gray-600 font-price tabular-nums">{holdings.length}</span>}
@@ -23,6 +23,7 @@ function PositionsPanel({ holdings = [], className }) {
                                 <th className="text-right px-3 pb-2 pt-2 text-[11px] font-medium tracking-wider uppercase text-gray-500">Avg</th>
                                 <th className="text-right px-3 pb-2 pt-2 text-[11px] font-medium tracking-wider uppercase text-gray-500">LTP</th>
                                 <th className="text-right px-3 pb-2 pt-2 text-[11px] font-medium tracking-wider uppercase text-gray-500">P&L</th>
+                                <th className="text-right px-3 pb-2 pt-2 text-[11px] font-medium tracking-wider uppercase text-gray-500">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -38,6 +39,14 @@ function PositionsPanel({ holdings = [], className }) {
                                         <td className={cn('py-2.5 px-3 text-right font-mono font-medium', pnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
                                             {pnl >= 0 ? '+' : ''}₹{formatPrice(pnl)}{' '}
                                             ({formatPercent(pnlPct)})
+                                        </td>
+                                        <td className="py-2.5 px-3 text-right">
+                                            <button
+                                                onClick={() => onSell?.(h.symbol)}
+                                                className="px-2 py-1 rounded text-[10px] font-bold bg-red-500/15 text-red-400 hover:bg-red-500/30 border border-red-500/20 transition-colors"
+                                            >
+                                                SELL
+                                            </button>
                                         </td>
                                     </tr>
                                 );

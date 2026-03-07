@@ -26,7 +26,7 @@ export const LAYOUT_TIER = {
 function getTier(width) {
     if (width < BREAKPOINTS.md) return LAYOUT_TIER.MOBILE;
     if (width < BREAKPOINTS.lg) return LAYOUT_TIER.TABLET;
-    if (width < BREAKPOINTS.xl) return LAYOUT_TIER.DESKTOP;
+    if (width < BREAKPOINTS.xl) return LAYOUT_TIER.LAPTOP;
     return LAYOUT_TIER.DESKTOP;
 }
 

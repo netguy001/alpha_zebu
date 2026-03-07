@@ -139,7 +139,7 @@ export default function Navbar({ onMenuToggle }) {
     const [marketStatus, setMarketStatus] = useState({ state: 'closed', is_trading: false });
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
-    const [seenOrderIds, setSeenOrderIds] = useState(new Set());
+    const seenOrderIdsRef = useRef(new Set());
     const [starredNow, setStarredNow] = useState(new Set());
     const searchRef = useRef(null);
     const bellRef = useRef(null);
@@ -174,7 +174,8 @@ export default function Navbar({ onMenuToggle }) {
         if (!orders || orders.length === 0) return;
         const newNotifs = [];
         orders.forEach((o) => {
-            if (seenOrderIds.has(o.id)) return;
+            if (seenOrderIdsRef.current.has(o.id)) return;
+            seenOrderIdsRef.current.add(o.id);
             const sym = o.symbol?.replace('.NS', '') || 'Unknown';
             const side = o.side || 'BUY';
             const qty = o.quantity || 0;
@@ -205,14 +206,9 @@ export default function Navbar({ onMenuToggle }) {
         });
 
         if (newNotifs.length > 0) {
-            setSeenOrderIds((prev) => {
-                const next = new Set(prev);
-                orders.forEach((o) => next.add(o.id));
-                return next;
-            });
             setNotifications((prev) => [...newNotifs, ...prev].slice(0, 50));
         }
-    }, [orders]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [orders]);
 
     // ── Generate notification on market status change ─────────────────────────
     const prevMarketTrading = useRef(null);

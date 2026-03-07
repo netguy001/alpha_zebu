@@ -145,7 +145,10 @@ export default function OrderPanel({ symbol, currentPrice = 0, isTerminalFocused
                             type="number"
                             min={1}
                             value={form.quantity}
-                            onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                setForm((f) => ({ ...f, quantity: isNaN(val) ? '' : Math.max(1, val) }));
+                            }}
                             className="flex-1 text-center bg-transparent text-heading text-sm font-price py-2 focus:outline-none tabular-nums"
                         />
                         <button
@@ -238,7 +241,7 @@ export default function OrderPanel({ symbol, currentPrice = 0, isTerminalFocused
                 <div className="px-6 py-4 space-y-4">
                     {/* Summary */}
                     <div className="rounded-xl border border-edge/10 bg-surface-900/50 divide-y divide-edge/5 text-sm">
-                        {[  
+                        {[
                             ['Side', <span className={cn('font-bold', isBuy ? 'text-bull' : 'text-bear')}>{form.side}</span>],
                             ['Symbol', <span className="font-price text-heading">{symbol?.replace('.NS', '')}</span>],
                             ['Order Type', form.order_type],

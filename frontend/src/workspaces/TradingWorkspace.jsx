@@ -154,7 +154,7 @@ export default function TradingWorkspace() {
             key: 'positions',
             label: 'Positions',
             count: holdings.length,
-            content: <PositionsPanel holdings={holdings} />,
+            content: <PositionsPanel holdings={holdings} onSell={(s) => { setSelectedSymbol(s); handleSell(); }} />,
         },
         {
             key: 'orders',
@@ -278,8 +278,8 @@ export default function TradingWorkspace() {
                 </ResponsiveDrawer>
             )}
 
-            {/* ── MOBILE TRADE BAR ──────────────────────────────────── */}
-            {isMobile && (
+            {/* ── MOBILE/TABLET TRADE BAR ────────────────────────── */}
+            {isCompact && (
                 <div className="terminal-area-tradebar">
                     <MobileTradeBar
                         symbol={selectedSymbol}

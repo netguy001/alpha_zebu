@@ -156,7 +156,9 @@ function IndicatorMenu({ active, onToggle }) {
     const groups = {};
     Object.entries(INDICATOR_DEFS).forEach(([id, def]) => { (groups[def.group] = groups[def.group] || []).push({ id, ...def }); });
     return (
-        <div className="absolute top-full left-0 mt-1 w-56 bg-surface-800 border border-edge/10 rounded-xl shadow-panel z-50 animate-slide-in overflow-hidden">
+        <div className="absolute top-full left-0 mt-1 w-56 bg-surface-800 border border-edge/10 rounded-xl shadow-panel z-50 animate-slide-in overflow-hidden"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}>
             <div className="px-3 py-2 border-b border-edge/5 text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Indicators</div>
             <div className="max-h-72 overflow-y-auto py-1">
                 {Object.entries(groups).map(([group, items]) => (
@@ -683,6 +685,7 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     candlesPropRef.current = candles;
 
     const liveQuote = useMarketStore((s) => s.symbols[symbol] ?? null);
+    const wsStatus = useMarketStore((s) => s.wsStatus);
 
     const [activeIndicators, setActiveIndicators] = useState(new Set());
     const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
@@ -831,6 +834,25 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
 
     const clearDrawings = useCallback(() => { setHLines([]); if (rendererRef.current) rendererRef.current.setHLines([]); }, []);
 
+    // ── Fullscreen toggle ─────────────────────────────────────────────────────
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const chartWrapperRef = useRef(null);
+
+    const toggleFullscreen = useCallback(() => {
+        if (!chartWrapperRef.current) return;
+        if (!document.fullscreenElement) {
+            chartWrapperRef.current.requestFullscreen().catch(() => { });
+        } else {
+            document.exitFullscreen().catch(() => { });
+        }
+    }, []);
+
+    useEffect(() => {
+        const handler = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handler);
+        return () => document.removeEventListener('fullscreenchange', handler);
+    }, []);
+
     const trend = trendData?.overall ? TREND_STYLE[trendData.overall] || TREND_STYLE.NEUTRAL : null;
     const confidence = trendData?.confidence ?? 0;
 
@@ -850,7 +872,7 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div ref={chartWrapperRef} className={cn('flex flex-col h-full', isFullscreen && 'bg-surface-900')}>
             {/* ── Toolbar ──────────────────────────────────────────── */}
             <div className="flex items-center gap-2 px-2.5 py-1.5 border-b border-edge/5 bg-surface-900/30 flex-shrink-0" ref={menuRef}>
                 {onPeriodChange && (
@@ -862,16 +884,22 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
                     </>
                 )}
 
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 flex-shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    ZEBU LIVE
+                <div className={cn(
+                    'flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-semibold flex-shrink-0 border',
+                    wsStatus === 'connected'
+                        ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                        : wsStatus === 'connecting'
+                            ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+                            : 'text-gray-500 bg-surface-800/60 border-edge/10'
+                )}>
+                    <span className={cn(
+                        'w-1.5 h-1.5 rounded-full',
+                        wsStatus === 'connected' ? 'bg-emerald-400 animate-pulse'
+                            : wsStatus === 'connecting' ? 'bg-amber-400 animate-pulse'
+                                : 'bg-gray-500'
+                    )} />
+                    {wsStatus === 'connected' ? 'ZEBU LIVE' : wsStatus === 'connecting' ? 'CONNECTING' : 'OFFLINE'}
                 </div>
-
-                {livePrice != null && (
-                    <div className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold font-price text-gray-200 bg-surface-800/60 border border-edge/10 flex-shrink-0">
-                        ₹{fmtPrice(livePrice)}
-                    </div>
-                )}
 
                 <div className="relative flex-shrink-0">
                     <button onClick={() => { setShowIndicatorMenu(v => !v); setShowToolsMenu(false); }}
@@ -906,8 +934,19 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
                     </button>
                 )}
 
-                <div className="flex-1 min-w-0 flex justify-end">
+                <div className="flex-1 min-w-0 flex justify-end items-center gap-1">
                     <ActivePills active={activeIndicators} onRemove={toggleIndicator} />
+                    <button onClick={toggleFullscreen} className="p-1 rounded text-gray-500 hover:text-gray-300 hover:bg-surface-800/60 transition-colors flex-shrink-0" title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+                        {isFullscreen ? (
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                            </svg>
+                        ) : (
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                            </svg>
+                        )}
+                    </button>
                 </div>
             </div>
 
