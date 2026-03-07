@@ -9,6 +9,8 @@ __pycache__/
 .env.production
 deploy/.env.production
 firebase-credentials.json
+firebase-service-account.json
+*-adminsdk-*.json
 
 # ── Build outputs ────────────────────────────────────────────
 frontend/dist/

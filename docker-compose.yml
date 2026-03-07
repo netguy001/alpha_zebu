@@ -20,6 +20,7 @@ services:
       - ZEBU_REDIRECT_URI=${ZEBU_REDIRECT_URI:-http://localhost:5173/broker/callback}
       - ZEBU_API_URL=${ZEBU_API_URL:-https://go.mynt.in/NorenWClientTP}
       - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY:-alphasync-broker-encryption-default-change-in-production-!!}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-service-account.json
     depends_on:
       - db
       - redis
