@@ -59,7 +59,7 @@ export const useAuthStore = create((set, get) => ({
                     localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
                     set({ user: res.data.user, loading: false, initializing: false });
                 } catch (err) {
-                    console.error('Auth sync failed:', err);
+                    console.error('Auth sync failed:', err?.response?.data?.detail || err?.response?.data || err.message);
                     // Clear invalid state
                     localStorage.removeItem('alphasync_token');
                     localStorage.removeItem('alphasync_user');
@@ -81,10 +81,19 @@ export const useAuthStore = create((set, get) => ({
         const token = await result.user.getIdToken();
         localStorage.setItem('alphasync_token', token);
 
-        const res = await api.post('/auth/sync', {});
-        localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
-        set({ user: res.data.user, firebaseUser: result.user });
-        return { success: true, isNew: res.data.is_new_user };
+        try {
+            const res = await api.post('/auth/sync', {});
+            localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
+            set({ user: res.data.user, firebaseUser: result.user });
+            return { success: true, isNew: res.data.is_new_user };
+        } catch (err) {
+            const detail = err.response?.data?.detail;
+            console.error('Auth sync error:', detail || err.message);
+            const error = new Error(detail || err.message);
+            error.code = err.code;
+            error.response = err.response;
+            throw error;
+        }
     },
 
     loginWithEmail: async (email, password) => {
@@ -109,10 +118,19 @@ export const useAuthStore = create((set, get) => ({
         const token = await result.user.getIdToken(true);
         localStorage.setItem('alphasync_token', token);
 
-        const res = await api.post('/auth/sync', { username });
-        localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
-        set({ user: res.data.user, firebaseUser: result.user });
-        return { success: true };
+        try {
+            const res = await api.post('/auth/sync', { username });
+            localStorage.setItem('alphasync_user', JSON.stringify(res.data.user));
+            set({ user: res.data.user, firebaseUser: result.user });
+            return { success: true };
+        } catch (err) {
+            const detail = err.response?.data?.detail;
+            console.error('Auth sync error:', detail || err.message);
+            const error = new Error(detail || err.message);
+            error.code = err.code;
+            error.response = err.response;
+            throw error;
+        }
     },
 
     resetPassword: async (email) => {

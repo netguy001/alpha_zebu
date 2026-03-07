@@ -29,12 +29,13 @@ async def get_db():
     async with async_session() as session:
         try:
             yield session
-            await session.commit()
+            # Only auto-commit if the route didn't already commit/rollback
+            if session.is_active:
+                await session.commit()
         except Exception:
-            await session.rollback()
+            if session.is_active:
+                await session.rollback()
             raise
-        finally:
-            await session.close()
 
 
 async def init_db():

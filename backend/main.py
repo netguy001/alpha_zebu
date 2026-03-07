@@ -249,6 +249,66 @@ async def health():
     }
 
 
+@app.get("/api/debug/db")
+async def debug_db():
+    """Temporary diagnostic endpoint — test DB connectivity and schema."""
+    import traceback
+    from database.connection import async_session
+    from sqlalchemy import text as sa_text, inspect as sa_inspect
+
+    results = {}
+
+    try:
+        async with async_session() as session:
+            # Test basic connectivity
+            row = await session.execute(sa_text("SELECT 1"))
+            results["db_connected"] = True
+
+            # Check if users table exists and its columns
+            cols = await session.execute(
+                sa_text(
+                    "SELECT column_name, data_type FROM information_schema.columns "
+                    "WHERE table_name = 'users' ORDER BY ordinal_position"
+                )
+            )
+            columns = [{"name": r[0], "type": r[1]} for r in cols.fetchall()]
+            results["users_table_columns"] = columns
+            results["has_firebase_uid"] = any(
+                c["name"] == "firebase_uid" for c in columns
+            )
+            results["has_auth_provider"] = any(
+                c["name"] == "auth_provider" for c in columns
+            )
+
+            # Check portfolios table
+            pcols = await session.execute(
+                sa_text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_name = 'portfolios' ORDER BY ordinal_position"
+                )
+            )
+            results["portfolios_columns"] = [r[0] for r in pcols.fetchall()]
+
+            # Check alembic version
+            try:
+                ver = await session.execute(
+                    sa_text("SELECT version_num FROM alembic_version")
+                )
+                results["alembic_version"] = [r[0] for r in ver.fetchall()]
+            except Exception:
+                results["alembic_version"] = "alembic_version table not found"
+
+            # Count users
+            cnt = await session.execute(sa_text("SELECT count(*) FROM users"))
+            results["user_count"] = cnt.scalar()
+
+    except Exception as e:
+        results["error"] = f"{type(e).__name__}: {e}"
+        results["traceback"] = traceback.format_exc()
+
+    return results
+
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str = None):
     connection_id = client_id or str(uuid.uuid4())
