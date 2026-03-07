@@ -461,4 +461,64 @@
       background-color: transparent;
     }
   }
+
+  /* ─── Landing page buttons ─── */
+  .landing-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: linear-gradient(135deg, #0099FF 0%, #00D4FF 100%);
+    color: #fff;
+  }
+
+  .landing-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(0, 153, 255, 0.3);
+    filter: brightness(1.1);
+  }
+
+  .landing-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+    color: rgb(var(--gray-400));
+    border: 1px solid rgb(var(--c-edge) / 0.1);
+  }
+
+  .landing-btn-ghost:hover {
+    border-color: #0099FF;
+    color: #0099FF;
+  }
+
+  .landing-btn-lg {
+    padding: 14px 32px;
+    font-size: 16px;
+    border-radius: 14px;
+  }
+
+  /* ─── Landing page fade-up animation ─── */
+  .landing-fade-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .landing-fade-up.landing-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
