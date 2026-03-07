@@ -22,6 +22,7 @@ from typing import Optional
 import time
 import logging
 
+from engines.market_session import market_session, MarketState
 from services.nse_stocks import NSE_STOCK_LIST
 
 logger = logging.getLogger(__name__)
@@ -113,6 +114,22 @@ class ProviderDataUnavailable(Exception):
 
 # ── User-scoped quote functions ────────────────────────────────────
 
+# Market states where Zebu REST returns unreliable last-price data
+_CLOSED_STATES = {MarketState.WEEKEND, MarketState.HOLIDAY, MarketState.CLOSED}
+
+
+def _adjust_for_market_state(quote: dict) -> dict:
+    """Override stale lp with prev_close when the market is not active."""
+    state = market_session.get_current_state()
+    if state in _CLOSED_STATES:
+        prev_close = quote.get("prev_close") or quote.get("close")
+        if prev_close and prev_close > 0:
+            quote["price"] = prev_close
+            quote["change"] = 0
+            quote["change_percent"] = 0
+        quote["market_status"] = state.value
+    return quote
+
 
 async def get_quote(symbol: str, user_id: str) -> dict:
     """
@@ -129,7 +146,7 @@ async def get_quote(symbol: str, user_id: str) -> dict:
         raise ProviderDataUnavailable(
             f"{type(provider).__name__} returned no data for {symbol}"
         )
-    return quote
+    return _adjust_for_market_state(quote)
 
 
 async def get_quote_safe(symbol: str, user_id: str) -> Optional[dict]:
@@ -166,7 +183,7 @@ async def get_system_quote(symbol: str) -> dict:
         raise ProviderDataUnavailable(
             f"{type(provider).__name__} returned no data for {symbol}"
         )
-    return quote
+    return _adjust_for_market_state(quote)
 
 
 async def get_system_quote_safe(symbol: str) -> Optional[dict]:

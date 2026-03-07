@@ -16,7 +16,7 @@ import asyncio
 import logging
 
 from core.event_bus import event_bus, Event, EventType
-from engines.market_session import market_session
+from engines.market_session import market_session, MarketState
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,13 @@ class MarketDataWorker:
 
                 # Sweep all subscribed symbols
                 symbols = list(self._subscribed_symbols)
+                actual_state = market_session.get_current_state()
+                market_closed = actual_state in (
+                    MarketState.WEEKEND,
+                    MarketState.HOLIDAY,
+                    MarketState.CLOSED,
+                )
+
                 if symbols:
                     for symbol in symbols:
                         if not self._running:
@@ -93,6 +100,20 @@ class MarketDataWorker:
 
                         quote = await provider.get_quote(symbol)
                         if quote:
+                            # When market is actually closed, Zebu REST
+                            # returns stale/incorrect lp values.  Use
+                            # prev_close as the display price instead
+                            # and zero out intraday change.
+                            if market_closed:
+                                prev_close = quote.get("prev_close") or quote.get(
+                                    "close"
+                                )
+                                if prev_close and prev_close > 0:
+                                    quote["price"] = prev_close
+                                    quote["change"] = 0
+                                    quote["change_percent"] = 0
+                                quote["market_status"] = actual_state.value
+
                             self._stats["emits"] += 1
                             await event_bus.emit(
                                 Event(
@@ -109,8 +130,14 @@ class MarketDataWorker:
 
                 self._stats["sweeps"] += 1
 
-                # Adapt interval to market state
-                if market_session.is_trading_hours():
+                # Use actual market state for poll interval (ignore
+                # simulation_mode — no need to hammer the API on weekends)
+                if actual_state in (
+                    MarketState.OPEN,
+                    MarketState.PRE_MARKET,
+                    MarketState.CLOSING,
+                    MarketState.AFTER_MARKET,
+                ):
                     await asyncio.sleep(self.ACTIVE_INTERVAL)
                 else:
                     await asyncio.sleep(self.IDLE_INTERVAL)
