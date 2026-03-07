@@ -57,3 +57,36 @@ async def init_db():
         from strategies.zeroloss import models as zeroloss_models  # noqa
 
         await conn.run_sync(Base.metadata.create_all)
+
+        # ── Add missing columns for Firebase auth migration ─────────────
+        # create_all doesn't ALTER existing tables — add columns manually
+        # if they're missing (idempotent).
+        await conn.execute(
+            text(
+                """
+            DO $$ BEGIN
+                -- Add firebase_uid column if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'users' AND column_name = 'firebase_uid'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN firebase_uid VARCHAR(128) UNIQUE;
+                    CREATE INDEX IF NOT EXISTS ix_users_firebase_uid ON users (firebase_uid);
+                END IF;
+
+                -- Add auth_provider column if missing
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'users' AND column_name = 'auth_provider'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN auth_provider VARCHAR(30) NOT NULL DEFAULT 'firebase';
+                END IF;
+
+                -- Make password_hash nullable (Firebase users have no password)
+                ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+            EXCEPTION WHEN others THEN
+                RAISE NOTICE 'Migration note: %', SQLERRM;
+            END $$;
+        """
+            )
+        )

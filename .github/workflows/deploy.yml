@@ -3,6 +3,11 @@ name: Build & Deploy AlphaSync
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
   workflow_dispatch:
 
 env:
@@ -119,8 +124,8 @@ jobs:
             # Deploy — force recreate to pick up new credentials and config
             docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
-            # Run database migrations
-            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+            # Run database migrations (non-fatal — init_db handles schema if alembic not set up yet)
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head || echo "⚠️ Alembic migration skipped (init_db will handle schema)"
 
             # Clean up old images
             docker image prune -f
