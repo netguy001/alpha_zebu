@@ -110,3 +110,4 @@ def verify_firebase_token(id_token: str) -> Optional[dict]:
         logger.error(f"Firebase token verification error: {e}")
         return None
         return None
+        return None

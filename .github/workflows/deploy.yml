@@ -75,10 +75,11 @@ jobs:
           FIREBASE_CREDS: ${{ secrets.FIREBASE_CREDENTIALS_JSON }}
         run: |
           if [ -n "$FIREBASE_CREDS" ]; then
-            printenv FIREBASE_CREDS > firebase-credentials.json
+            # Use printf to avoid shell expansion of \n in private keys
+            printf '%s' "$FIREBASE_CREDS" > firebase-credentials.json
             echo "✅ Firebase credentials written ($(wc -c < firebase-credentials.json) bytes)"
             # Validate it's real JSON with required fields
-            python3 -c "import json; d=json.load(open('firebase-credentials.json')); assert d.get('type')=='service_account', 'Not a service account key'; print('✅ Valid service account for project:', d.get('project_id'))"
+            python3 -c "import json; d=json.load(open('firebase-credentials.json')); assert d.get('type')=='service_account', 'Not a service account key'; assert d.get('private_key','').startswith('-----BEGIN'), 'Private key looks corrupt'; print('✅ Valid service account for project:', d.get('project_id'))"
           else
             echo '{}' > firebase-credentials.json
             echo "⚠️  FIREBASE_CREDENTIALS_JSON secret is not set!"

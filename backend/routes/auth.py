@@ -126,70 +126,88 @@ async def sync_user(
     if not firebase_uid:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    # Try to find existing user by firebase_uid
-    result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
-    user = result.scalar_one_or_none()
+    try:
+        # Try to find existing user by firebase_uid
+        result = await db.execute(select(User).where(User.firebase_uid == firebase_uid))
+        user = result.scalar_one_or_none()
 
-    is_new = False
+        is_new = False
 
-    if not user:
-        # Also check if email already exists (edge case: migrated user)
-        if email:
-            result = await db.execute(select(User).where(User.email == email))
-            user = result.scalar_one_or_none()
+        if not user:
+            # Also check if email already exists (edge case: migrated user)
+            if email:
+                result = await db.execute(select(User).where(User.email == email))
+                user = result.scalar_one_or_none()
 
-        if user:
-            # Link existing email-based user to Firebase
-            user.firebase_uid = firebase_uid
-            user.auth_provider = provider
-            if picture and not user.avatar_url:
-                user.avatar_url = picture
-            if email_verified:
-                user.is_verified = True
-        else:
-            # Create brand-new user
-            is_new = True
+            if user:
+                # Link existing email-based user to Firebase
+                user.firebase_uid = firebase_uid
+                user.auth_provider = provider
+                if picture and not user.avatar_url:
+                    user.avatar_url = picture
+                if email_verified:
+                    user.is_verified = True
+            else:
+                # Create brand-new user
+                is_new = True
 
-            # Generate username from email or name
-            username = req.username
-            if not username:
-                username = email.split("@")[0] if email else f"user_{firebase_uid[:8]}"
+                # Generate username from email or name
+                username = req.username
+                if not username:
+                    username = (
+                        email.split("@")[0] if email else f"user_{firebase_uid[:8]}"
+                    )
 
-            # Ensure username uniqueness
-            base_username = username
-            counter = 1
-            while True:
-                result = await db.execute(select(User).where(User.username == username))
-                if not result.scalar_one_or_none():
-                    break
-                username = f"{base_username}{counter}"
-                counter += 1
+                # Ensure username uniqueness
+                base_username = username
+                counter = 1
+                while True:
+                    result = await db.execute(
+                        select(User).where(User.username == username)
+                    )
+                    if not result.scalar_one_or_none():
+                        break
+                    username = f"{base_username}{counter}"
+                    counter += 1
 
-            user = User(
-                firebase_uid=firebase_uid,
-                email=email,
-                username=username,
-                full_name=name or username,
-                auth_provider=provider,
-                avatar_url=picture,
-                virtual_capital=settings.DEFAULT_VIRTUAL_CAPITAL,
-                is_verified=email_verified,
-            )
-            db.add(user)
-            await db.flush()
+                user = User(
+                    firebase_uid=firebase_uid,
+                    email=email,
+                    username=username,
+                    full_name=name or username,
+                    auth_provider=provider,
+                    avatar_url=picture,
+                    virtual_capital=settings.DEFAULT_VIRTUAL_CAPITAL,
+                    is_verified=email_verified,
+                )
+                db.add(user)
+                await db.flush()
 
-            # Create portfolio for new user
-            portfolio = Portfolio(
-                user_id=user.id,
-                available_capital=settings.DEFAULT_VIRTUAL_CAPITAL,
-            )
-            db.add(portfolio)
+                # Create portfolio for new user
+                portfolio = Portfolio(
+                    user_id=user.id,
+                    available_capital=settings.DEFAULT_VIRTUAL_CAPITAL,
+                )
+                db.add(portfolio)
 
-    # Update last login info
-    user.updated_at = datetime.now(timezone.utc)
+        # Update last login info
+        user.updated_at = datetime.now(timezone.utc)
 
-    await db.commit()
-    await db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Sync database error for {email} (firebase_uid={firebase_uid}): {e}",
+            exc_info=True,
+        )
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Account sync failed: {type(e).__name__}: {e}",
+        )
 
     uid = str(user.id)
 
