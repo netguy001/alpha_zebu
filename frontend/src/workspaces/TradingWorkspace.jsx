@@ -37,6 +37,14 @@ export default function TradingWorkspace() {
     const [strategyDockOpen, setStrategyDockOpen] = useState(false);
     const [bottomCollapsed, setBottomCollapsed] = useState(false);
 
+    // Sync selectedSymbol when URL ?symbol= changes (e.g. ticker bar click)
+    useEffect(() => {
+        const urlSymbol = searchParams.get('symbol');
+        if (urlSymbol && urlSymbol !== selectedSymbol) {
+            setSelectedSymbol(urlSymbol);
+        }
+    }, [searchParams]);
+
     // Responsive drawer states
     const [watchlistDrawerOpen, setWatchlistDrawerOpen] = useState(false);
     const [orderDrawerOpen, setOrderDrawerOpen] = useState(false);

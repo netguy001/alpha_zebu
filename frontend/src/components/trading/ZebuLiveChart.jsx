@@ -917,7 +917,7 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
                     <div className="absolute inset-0 flex items-center justify-center">
                         <Skeleton variant="chart" className="absolute inset-0 rounded-none" />
                         {!isLoading && candles.length === 0 && (
-                            <div className="relative z-10 text-gray-600 text-sm">No chart data — connect Zebu broker for live data</div>
+                            <div className="relative z-10 text-gray-600 text-sm">No chart data — symbol may not be supported</div>
                         )}
                     </div>
                 ) : null}
