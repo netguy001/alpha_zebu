@@ -131,7 +131,10 @@ export default function MarketTickerBar() {
       {/* Marquee track — two copies for seamless loop */}
       <div
         className="ticker-marquee flex items-center"
-        style={{ animationPlayState: paused ? "paused" : "running" }}
+        style={{
+          animationPlayState: paused ? "paused" : "running",
+          '--ticker-duration': `${Math.max(20, items.length * 3)}s`,
+        }}
       >
         {/* Copy A */}
         <div className="ticker-track flex items-center">

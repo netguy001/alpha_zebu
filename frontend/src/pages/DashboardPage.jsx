@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import api from '../services/api';
 import {
     HiTrendingUp, HiTrendingDown, HiCurrencyRupee,
@@ -38,7 +38,7 @@ function MiniSparkline({ data = [], color = 'var(--bullish)', width = 80, height
 }
 
 export default function DashboardPage() {
-    const { user } = useAuth();
+    const { user } = useAuthStore();
     const [portfolio, setPortfolio] = useState(null);
     const [indices, setIndices] = useState([]);
     const [holdings, setHoldings] = useState([]);
@@ -291,8 +291,8 @@ export default function DashboardPage() {
                                         <div className="text-sm font-price font-semibold text-heading tabular-nums">{formatCurrency(o.filled_price ?? o.price)}</div>
                                         <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-semibold',
                                             o.status === 'FILLED' ? 'text-profit bg-profit/10' :
-                                            o.status === 'REJECTED' || o.status === 'CANCELLED' ? 'text-loss bg-loss/10' :
-                                            'text-amber-400 bg-amber-400/10'
+                                                o.status === 'REJECTED' || o.status === 'CANCELLED' ? 'text-loss bg-loss/10' :
+                                                    'text-amber-400 bg-amber-400/10'
                                         )}>{o.status}</span>
                                     </div>
                                 </div>

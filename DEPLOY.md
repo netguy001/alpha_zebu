@@ -61,10 +61,21 @@ nano .env
 |---|---|
 | `POSTGRES_PASSWORD` | `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `REDIS_PASSWORD` | `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |
-| `JWT_SECRET_KEY` | `python3 -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | `BROKER_ENCRYPTION_KEY` | `python3 -c "import secrets; print(secrets.token_urlsafe(48))"` |
 
 Also fill in your Zebu/MYNT API credentials (`ZEBU_API_SECRET`, `ZEBU_VENDOR_CODE`).
+
+**Firebase Setup:**
+
+1. Download your Firebase service account JSON from Firebase Console → Project Settings → Service Accounts
+2. Place it on the server at `/opt/alphasync/firebase-credentials.json`
+3. For the frontend build, set these in `.env`:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
 
 ---
 
@@ -102,17 +113,15 @@ The first-deploy script will:
 
 ## Step 5: Setup SSL (HTTPS)
 
-**Only run this after DNS is pointing to your server** (check with `dig www.alphasync.app`):
+SSL is managed by **CloudPanel**, not Docker containers.
 
-```bash
-bash deploy/setup-ssl.sh
-```
+1. Log in to CloudPanel at `https://YOUR_SERVER_IP:8443`
+2. Add site: `www.alphasync.app` (with `alphasync.app` as alias)
+3. Set reverse proxy origin to `127.0.0.1:3000`
+4. Click "Issue Let's Encrypt Certificate"
+5. Add a second reverse proxy rule for `/api/*` → `127.0.0.1:8000` and `/ws/*` → `127.0.0.1:8000` (WebSocket upgrade)
 
-This will:
-1. Temporarily switch nginx to HTTP-only mode
-2. Obtain a Let's Encrypt SSL certificate for `alphasync.app` and `www.alphasync.app`
-3. Restore the full SSL nginx config
-4. Restart all services
+CloudPanel auto-renews certificates via cron.
 
 After this, your site is live at **https://www.alphasync.app**
 
@@ -129,7 +138,7 @@ curl -s http://localhost:8000/api/health | python3 -m json.tool
 
 # Check logs if something is wrong
 docker compose -f docker-compose.prod.yml logs backend --tail 50
-docker compose -f docker-compose.prod.yml logs nginx --tail 50
+docker compose -f docker-compose.prod.yml logs frontend --tail 50
 docker compose -f docker-compose.prod.yml logs db --tail 50
 ```
 
@@ -181,9 +190,6 @@ docker compose -f docker-compose.prod.yml down
 # Stop everything AND delete data (DANGEROUS)
 docker compose -f docker-compose.prod.yml down -v
 
-# Renew SSL certificates manually
-docker compose -f docker-compose.prod.yml exec certbot certbot renew
-
 # View disk usage
 docker system df
 ```
@@ -196,15 +202,15 @@ docker system df
 Internet
   │
   ▼
-┌─────────────────┐
-│  Nginx (:80/443)│  ← SSL termination, rate limiting
-│  reverse proxy   │
-└────┬────┬───────┘
+┌─────────────────────┐
+│  CloudPanel Nginx    │  ← SSL termination, reverse proxy
+│  (:80/443)           │
+└────┬────┬───────────┘
      │    │
      ▼    ▼
 ┌────────┐ ┌──────────┐
 │Frontend│ │ Backend  │
-│ :80    │ │ :8000    │  ← gunicorn + 2 uvicorn workers
+│ :3000  │ │ :8000    │  ← gunicorn + 2 uvicorn workers
 └────────┘ └──┬───┬───┘
               │   │
               ▼   ▼
@@ -214,4 +220,4 @@ Internet
          └──────┘ └───────┘
 ```
 
-All services are on an internal Docker network. Only nginx ports 80/443 are exposed to the internet.
+CloudPanel manages Nginx externally. Docker services (backend, frontend, db, redis) are on an internal Docker network. Only backend (:8000) and frontend (:3000) are exposed on localhost for CloudPanel to proxy.

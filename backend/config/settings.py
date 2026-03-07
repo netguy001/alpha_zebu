@@ -21,12 +21,6 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_JSON: str = ""  # JSON string of service account key
     FIREBASE_CREDENTIALS_PATH: str = ""  # Path to service account JSON file
 
-    # JWT (legacy — kept for internal tokens like broker state)
-    JWT_SECRET_KEY: str = "alphasync-default-jwt-secret-change-in-production"
-    JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
@@ -48,9 +42,7 @@ class Settings(BaseSettings):
 
     # Zebu Broker OAuth / API Integration
     ZEBU_API_URL: str = "https://go.mynt.in/NorenWClientTP"
-    ZEBU_AUTH_URL: str = (
-        "https://login.zebull.in"  # Vendor SSO redirect (may not be available)
-    )
+    ZEBU_AUTH_URL: str = "https://go.mynt.in"  # Vendor SSO redirect (MYNT portal)
     ZEBU_VENDOR_CODE: str = ""
     ZEBU_REDIRECT_URI: str = "http://localhost:5173/broker/callback"
 
@@ -59,12 +51,6 @@ class Settings(BaseSettings):
     BROKER_ENCRYPTION_KEY: str = (
         "alphasync-default-broker-key-change-in-production-1234"
     )
-
-    # 2FA
-    TWO_FACTOR_ISSUER: str = "AlphaSync"
-
-    # Email verification (True = auto-verify for demo, False = require email confirmation)
-    AUTO_VERIFY_EMAIL: bool = True
 
     # ── New Architecture Settings ───────────────────────────────────
 

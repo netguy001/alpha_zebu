@@ -23,7 +23,7 @@ services:
     environment:
       - DEBUG=false
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-alphasync}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-alphasync}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - CORS_ORIGINS=["https://www.alphasync.app","https://alphasync.app"]
       - ZEBU_WS_URL=${ZEBU_WS_URL:-wss://go.mynt.in/NorenWSTP/}

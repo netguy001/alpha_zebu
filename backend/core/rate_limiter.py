@@ -20,10 +20,9 @@ logger = logging.getLogger(__name__)
 
 # Rate limit configurations per path prefix
 RATE_LIMITS = {
-    "/api/auth/login": {"max_requests": 10, "window_seconds": 60},
-    "/api/auth/register": {"max_requests": 5, "window_seconds": 60},
-    "/api/auth/refresh": {"max_requests": 30, "window_seconds": 60},
-    "/api/auth/2fa": {"max_requests": 10, "window_seconds": 60},
+    "/api/auth/sync": {"max_requests": 10, "window_seconds": 60},
+    "/api/auth/me": {"max_requests": 30, "window_seconds": 60},
+    "/api/auth/logout": {"max_requests": 10, "window_seconds": 60},
 }
 
 # Default rate limit for all other API endpoints

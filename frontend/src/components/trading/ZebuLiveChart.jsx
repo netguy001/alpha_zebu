@@ -152,11 +152,11 @@ function TimeframeBar({ period, onPeriodChange }) {
     );
 }
 
-function IndicatorMenu({ active, onToggle }) {
+function IndicatorMenu({ active, onToggle, menuRef }) {
     const groups = {};
     Object.entries(INDICATOR_DEFS).forEach(([id, def]) => { (groups[def.group] = groups[def.group] || []).push({ id, ...def }); });
     return (
-        <div className="absolute top-full left-0 mt-1 w-56 bg-surface-800 border border-edge/10 rounded-xl shadow-panel z-50 animate-slide-in overflow-hidden"
+        <div ref={menuRef} className="absolute top-full left-0 mt-1 w-56 bg-surface-800 border border-edge/10 rounded-xl shadow-panel z-50 animate-slide-in overflow-hidden"
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}>
             <div className="px-3 py-2 border-b border-edge/5 text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Indicators</div>
@@ -182,13 +182,13 @@ function IndicatorMenu({ active, onToggle }) {
     );
 }
 
-function ToolsMenu({ activeTool, onSelect, onClose }) {
+function ToolsMenu({ activeTool, onSelect, onClose, menuRef }) {
     const tools = [
         { id: 'crosshair', label: 'Crosshair', icon: '＋' },
         { id: 'hline', label: 'Horizontal Line', icon: '─' },
     ];
     return (
-        <div className="absolute top-full left-0 mt-1 w-44 bg-surface-800 border border-edge/10 rounded-xl shadow-panel z-50 animate-slide-in overflow-hidden">
+        <div ref={menuRef} className="absolute top-full left-0 mt-1 w-44 bg-surface-800 border border-edge/10 rounded-xl shadow-panel z-50 animate-slide-in overflow-hidden">
             <div className="px-3 py-2 border-b border-edge/5 text-[11px] text-gray-500 font-semibold uppercase tracking-wider">Tools</div>
             <div className="py-1">
                 {tools.map(t => (
@@ -698,9 +698,18 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
     const [rendererVersion, setRendererVersion] = useState(0);
 
     const menuRef = useRef(null);
+    const indicatorMenuRef = useRef(null);
+    const toolsMenuRef = useRef(null);
     useEffect(() => {
         if (!showIndicatorMenu && !showToolsMenu) return;
-        const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) { setShowIndicatorMenu(false); setShowToolsMenu(false); } };
+        const h = (e) => {
+            // Don't close if the click is inside the toolbar, indicator menu, or tools menu
+            if (menuRef.current && menuRef.current.contains(e.target)) return;
+            if (indicatorMenuRef.current && indicatorMenuRef.current.contains(e.target)) return;
+            if (toolsMenuRef.current && toolsMenuRef.current.contains(e.target)) return;
+            setShowIndicatorMenu(false);
+            setShowToolsMenu(false);
+        };
         document.addEventListener('mousedown', h);
         return () => document.removeEventListener('mousedown', h);
     }, [showIndicatorMenu, showToolsMenu]);
@@ -912,7 +921,7 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
                         Indicators
                         {activeIndicators.size > 0 && <span className="ml-0.5 w-4 h-4 rounded-full bg-primary-500/30 text-[10px] flex items-center justify-center">{activeIndicators.size}</span>}
                     </button>
-                    {showIndicatorMenu && <IndicatorMenu active={activeIndicators} onToggle={toggleIndicator} />}
+                    {showIndicatorMenu && <IndicatorMenu active={activeIndicators} onToggle={toggleIndicator} menuRef={indicatorMenuRef} />}
                 </div>
 
                 <div className="relative flex-shrink-0">
@@ -925,7 +934,7 @@ const ZebuLiveChart = memo(function ZebuLiveChart({
                         </svg>
                         Tools
                     </button>
-                    {showToolsMenu && <ToolsMenu activeTool={activeTool} onSelect={setActiveTool} onClose={() => setShowToolsMenu(false)} />}
+                    {showToolsMenu && <ToolsMenu activeTool={activeTool} onSelect={setActiveTool} onClose={() => setShowToolsMenu(false)} menuRef={toolsMenuRef} />}
                 </div>
 
                 {hLines.length > 0 && (

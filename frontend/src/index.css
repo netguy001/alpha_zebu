@@ -386,7 +386,7 @@
   .ticker-marquee {
     display: flex;
     width: max-content;
-    animation: ticker-scroll 120s linear infinite;
+    animation: ticker-scroll var(--ticker-duration, 60s) linear infinite;
   }
 
   .ticker-marquee:hover {
@@ -435,16 +435,16 @@
 
   /* ─── Price flash animations (watchlist LTP change) ─── */
   .animate-price-up {
-    animation: price-flash-up 600ms ease-out;
+    animation: price-flash-up 400ms ease-out;
   }
 
   .animate-price-down {
-    animation: price-flash-down 600ms ease-out;
+    animation: price-flash-down 400ms ease-out;
   }
 
   @keyframes price-flash-up {
     0% {
-      background-color: rgba(16, 185, 129, 0.25);
+      background-color: rgba(16, 185, 129, 0.12);
     }
 
     100% {
@@ -454,7 +454,7 @@
 
   @keyframes price-flash-down {
     0% {
-      background-color: rgba(239, 68, 68, 0.25);
+      background-color: rgba(239, 68, 68, 0.12);
     }
 
     100% {

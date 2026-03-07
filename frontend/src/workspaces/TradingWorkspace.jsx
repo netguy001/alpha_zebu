@@ -135,16 +135,20 @@ export default function TradingWorkspace() {
     }, [isWide]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
+    const [orderSide, setOrderSide] = useState(null);
+
     const handleSelectSymbol = useCallback((symbol) => {
         setSelectedSymbol(symbol);
         if (isCompact) setWatchlistDrawerOpen(false);
     }, [isCompact]);
 
     const handleBuy = useCallback(() => {
+        setOrderSide('BUY');
         setOrderDrawerOpen(true);
     }, []);
 
     const handleSell = useCallback(() => {
+        setOrderSide('SELL');
         setOrderDrawerOpen(true);
     }, []);
 
@@ -181,6 +185,7 @@ export default function TradingWorkspace() {
             symbol={selectedSymbol}
             currentPrice={quote?.price ?? 0}
             isTerminalFocused={isTerminalFocused}
+            initialSide={orderSide}
         />
     );
 

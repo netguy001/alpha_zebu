@@ -6,8 +6,6 @@ from sqlalchemy import (
     Boolean,
     Numeric,
     DateTime,
-    ForeignKey,
-    Text,
     Index,
     text,
 )
@@ -66,12 +64,6 @@ class User(Base):
     )
 
     # Relationships
-    two_factor = relationship(
-        "TwoFactorAuth",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
-    )
     portfolio = relationship(
         "Portfolio", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
@@ -84,73 +76,3 @@ class User(Base):
     )
 
     __table_args__ = (Index("ix_users_role_active", "role", "is_active"),)
-
-
-class TwoFactorAuth(Base):
-    __tablename__ = "two_factor_auth"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        unique=True,
-        nullable=False,
-    )
-    secret = Column(String(32), nullable=False)
-    is_enabled = Column(
-        Boolean, default=False, nullable=False, server_default=text("false")
-    )
-    backup_codes = Column(Text, nullable=True)
-    created_at = Column(
-        DateTime(timezone=True),
-        default=_utcnow,
-        nullable=False,
-        server_default=text("now()"),
-    )
-
-    user = relationship("User", back_populates="two_factor")
-
-
-class UserSession(Base):
-    __tablename__ = "user_sessions"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    token_jti = Column(String(36), unique=True, nullable=False, index=True)
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(String(500), nullable=True)
-    is_active = Column(
-        Boolean, default=True, nullable=False, server_default=text("true")
-    )
-    created_at = Column(
-        DateTime(timezone=True),
-        default=_utcnow,
-        nullable=False,
-        server_default=text("now()"),
-    )
-    expires_at = Column(DateTime(timezone=True), nullable=False)
-
-    __table_args__ = (Index("ix_user_sessions_active", "user_id", "is_active"),)
-
-
-class FailedLoginAttempt(Base):
-    __tablename__ = "failed_login_attempts"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    attempted_at = Column(
-        DateTime(timezone=True),
-        default=_utcnow,
-        nullable=False,
-        server_default=text("now()"),
-    )

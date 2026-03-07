@@ -21,13 +21,20 @@ fi
 
 # Validate critical secrets are set
 source .env
-for var in POSTGRES_PASSWORD JWT_SECRET_KEY BROKER_ENCRYPTION_KEY; do
+for var in POSTGRES_PASSWORD REDIS_PASSWORD BROKER_ENCRYPTION_KEY; do
     val="${!var:-}"
     if [ -z "$val" ] || [[ "$val" == *"CHANGE_ME"* ]]; then
         echo "❌ ERROR: $var is not set or still has default value in .env"
         exit 1
     fi
 done
+
+# Validate Firebase credentials file exists
+if [ ! -f "$APP_DIR/firebase-credentials.json" ]; then
+    echo "❌ ERROR: $APP_DIR/firebase-credentials.json not found!"
+    echo "   Place your Firebase service account JSON file at that path."
+    exit 1
+fi
 
 echo "→ .env validated"
 
@@ -50,8 +57,8 @@ sleep 10
 echo "→ Running Alembic migrations..."
 docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
 
-# ── Start frontend + nginx ─────────────────────────────────
-echo "→ Starting frontend and nginx..."
+# ── Start frontend ─────────────────────────────────────────────
+echo "→ Starting frontend..."
 docker compose -f docker-compose.prod.yml up -d
 
 # ── Verify ─────────────────────────────────────────────────
@@ -64,5 +71,7 @@ echo "=========================================="
 echo "  ✅ First deployment complete!"
 echo "=========================================="
 echo ""
-echo "  Now run setup-ssl.sh to enable HTTPS"
+echo "  CloudPanel manages Nginx and SSL certificates."
+echo "  Configure your domain in CloudPanel to proxy"
+echo "  to 127.0.0.1:3000 (frontend) and 127.0.0.1:8000 (backend)."
 echo ""

@@ -30,7 +30,7 @@ const WatchlistItem = memo(function WatchlistItem({
         if (prev !== undefined && curr !== undefined && prev !== curr) {
             const cls = curr > prev ? 'animate-price-up' : 'animate-price-down';
             setFlashClass(cls);
-            const t = setTimeout(() => setFlashClass(''), 650);
+            const t = setTimeout(() => setFlashClass(''), 450);
             prevPriceRef.current = curr;
             return () => clearTimeout(t);
         }
@@ -76,32 +76,16 @@ const WatchlistItem = memo(function WatchlistItem({
                 </div>
             </div>
 
-            {/* ── Right: price+change always visible, action buttons overlay on hover ── */}
-            <div className="flex-shrink-0 ml-1 relative">
-                {/* Prices — always visible */}
-                <div className={cn('flex flex-col items-end transition-opacity duration-150', hovered && 'opacity-30')}>
-                    <span className="text-[13px] font-price font-semibold text-heading tabular-nums">
-                        {price?.price != null ? formatPrice(price.price) : '—'}
-                    </span>
-                    <span className={cn(
-                        'flex items-center gap-0.5 text-[10px] font-price tabular-nums',
-                        changePositive ? 'text-bull' : 'text-bear'
-                    )}>
-                        <span className="text-[9px] leading-none">{changePositive ? '▲' : '▼'}</span>
-                        {price?.change_percent != null
-                            ? formatPercent(price.change_percent, 2)
-                            : '—'}
-                    </span>
-                </div>
-
-                {/* Action buttons — overlay on hover */}
+            {/* ── Right: action buttons (hover) + price always visible ── */}
+            <div className="flex-shrink-0 ml-1 flex items-center gap-1.5">
+                {/* Action buttons — appear on hover, placed left of prices */}
                 {hovered && (
-                    <div className="absolute inset-0 flex items-center justify-end gap-1">
+                    <div className="flex items-center gap-0.5 animate-fade-in">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                const symbol = item.symbol?.endsWith('.NS') ? item.symbol : `${item.symbol}.NS`;
-                                navigate(`/terminal?symbol=${encodeURIComponent(symbol)}`);
+                                const sym = item.symbol?.endsWith('.NS') ? item.symbol : `${item.symbol}.NS`;
+                                navigate(`/terminal?symbol=${encodeURIComponent(sym)}`);
                             }}
                             className="p-1 rounded text-gray-400 hover:text-primary-400 hover:bg-primary-500/10 transition-colors"
                             title="Open chart"
@@ -112,13 +96,13 @@ const WatchlistItem = memo(function WatchlistItem({
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onBuy?.(item.symbol); }}
-                            className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/90 hover:bg-emerald-400 text-white transition-colors leading-none"
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/90 hover:bg-emerald-400 text-white transition-colors leading-none"
                         >
                             B
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); onSell?.(item.symbol); }}
-                            className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/90 hover:bg-red-400 text-white transition-colors leading-none"
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/90 hover:bg-red-400 text-white transition-colors leading-none"
                         >
                             S
                         </button>
@@ -133,6 +117,22 @@ const WatchlistItem = memo(function WatchlistItem({
                         </button>
                     </div>
                 )}
+
+                {/* Prices — always visible, never hidden */}
+                <div className="flex flex-col items-end">
+                    <span className="text-[13px] font-price font-semibold text-heading tabular-nums">
+                        {price?.price != null ? formatPrice(price.price) : '—'}
+                    </span>
+                    <span className={cn(
+                        'flex items-center gap-0.5 text-[10px] font-price tabular-nums',
+                        changePositive ? 'text-bull' : 'text-bear'
+                    )}>
+                        <span className="text-[9px] leading-none">{changePositive ? '▲' : '▼'}</span>
+                        {price?.change_percent != null
+                            ? formatPercent(price.change_percent, 2)
+                            : '—'}
+                    </span>
+                </div>
             </div>
         </div>
     );

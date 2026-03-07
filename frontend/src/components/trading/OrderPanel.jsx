@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { useOrders } from '../../hooks/useOrders';
@@ -24,9 +24,16 @@ const PRODUCT_TYPES = [PRODUCT_TYPE.CNC, PRODUCT_TYPE.MIS, PRODUCT_TYPE.NRML];
  *   isTerminalFocused?: boolean,
  * }} props
  */
-export default function OrderPanel({ symbol, currentPrice = 0, isTerminalFocused = false }) {
+export default function OrderPanel({ symbol, currentPrice = 0, isTerminalFocused = false, initialSide }) {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const { form, setForm, setSide, totalCost, isSubmitting, submitOrder } = useOrders(symbol);
+
+    // Sync initialSide prop (e.g. from positions SELL button)
+    const prevInitialSide = useRef(initialSide);
+    if (initialSide && initialSide !== prevInitialSide.current) {
+        prevInitialSide.current = initialSide;
+        setSide(initialSide);
+    }
 
     // Keyboard shortcuts (active when terminal is focused and user isn't in an input)
     useKeyboardShortcuts({
@@ -146,8 +153,18 @@ export default function OrderPanel({ symbol, currentPrice = 0, isTerminalFocused
                             min={1}
                             value={form.quantity}
                             onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
-                                setForm((f) => ({ ...f, quantity: isNaN(val) ? '' : Math.max(1, val) }));
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                    setForm((f) => ({ ...f, quantity: '' }));
+                                    return;
+                                }
+                                const val = parseInt(raw, 10);
+                                if (!isNaN(val) && val >= 0) {
+                                    setForm((f) => ({ ...f, quantity: val }));
+                                }
+                            }}
+                            onBlur={() => {
+                                setForm((f) => ({ ...f, quantity: Math.max(1, parseInt(f.quantity) || 1) }));
                             }}
                             className="flex-1 text-center bg-transparent text-heading text-sm font-price py-2 focus:outline-none tabular-nums"
                         />

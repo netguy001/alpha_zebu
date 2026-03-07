@@ -7,25 +7,24 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://alphasync:alphasync@db:5432/alphasync
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-alphasync-production-secret}
       - ZEROLOSS_CONFIDENCE_THRESHOLD=${ZEROLOSS_CONFIDENCE_THRESHOLD:-75}
       - ZEROLOSS_SYMBOLS=${ZEROLOSS_SYMBOLS:-RELIANCE,TCS,HDFCBANK,INFY,ICICIBANK}
-      - MARKET_PROVIDER=${MARKET_PROVIDER:-yahoo}
       - REDIS_URL=redis://redis:6379/0
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:5173","http://localhost:3000"]}
       - ZEBU_WS_URL=${ZEBU_WS_URL:-wss://go.mynt.in/NorenWSTP/}
-      - ZEBU_USER_ID=${ZEBU_USER_ID:-}
-      - ZEBU_API_KEY=${ZEBU_API_KEY:-}
-      - ZEBU_SESSION_TOKEN=${ZEBU_SESSION_TOKEN:-}
+      - ZEBU_API_SECRET=${ZEBU_API_SECRET:-}
       - ZEBU_VENDOR_CODE=${ZEBU_VENDOR_CODE:-}
       - ZEBU_REDIRECT_URI=${ZEBU_REDIRECT_URI:-http://localhost:5173/broker/callback}
       - ZEBU_API_URL=${ZEBU_API_URL:-https://go.mynt.in/NorenWClientTP}
       - BROKER_ENCRYPTION_KEY=${BROKER_ENCRYPTION_KEY:-alphasync-broker-encryption-default-change-in-production-!!}
-      - FIREBASE_CREDENTIALS_PATH=/app/firebase-service-account.json
+      - SIMULATION_MODE=${SIMULATION_MODE:-true}
+      - FIREBASE_CREDENTIALS_PATH=/app/firebase-credentials.json
     depends_on:
       - db
       - redis
     volumes:
       - ./backend:/app
+      - ./firebase-credentials.json:/app/firebase-credentials.json:ro
     restart: unless-stopped
 
   frontend:

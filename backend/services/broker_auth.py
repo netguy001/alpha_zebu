@@ -61,7 +61,7 @@ from services.broker_crypto import (
 logger = logging.getLogger(__name__)
 
 # ── Zebu API endpoints ──────────────────────────────────────────────
-ZEBU_API_BASE = "https://api.zebull.in/rest/V3norenapi"
+ZEBU_API_BASE = settings.ZEBU_API_URL
 # NOTE: ZEBU_AUTH_URL is now in settings (configurable via .env)
 
 
