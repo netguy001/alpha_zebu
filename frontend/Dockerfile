@@ -4,7 +4,7 @@ FROM node:18-alpine AS build
 WORKDIR /app
 
 # Add node_modules/.bin to PATH so vite is found
-ENV PATH /app/node_modules/.bin:$PATH
+ENV PATH="/app/node_modules/.bin:$PATH"
 
 # Firebase config — passed as build args, baked into the JS bundle by Vite
 ARG VITE_FIREBASE_API_KEY
@@ -23,9 +23,9 @@ ENV VITE_FIREBASE_APP_ID=$VITE_FIREBASE_APP_ID
 # Copy package files first for better layer caching
 COPY package.json package-lock.json* ./
 
-# Install deps — npm ci is faster (clean install from lockfile)
+# Install deps with cache mount for speed
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+    npm install
 
 # Copy source code
 COPY . .
